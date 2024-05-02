@@ -4,6 +4,10 @@ This repository is a template to allow you to track your progress on a [misguide
 
 **Interested in joining an insane challenge?** Use this repository as a template to get started tracking your progress.
 
+## Credit
+
+I'd like to be clear that I didn't create this challenge, for that you'd have to thank (or blame...) [@jaredkrinke](https://github.com/jaredkrinke). I just wanted to create an easier to use template for other people to try out the challenge.
+
 ## Motivations
 
 I wanted to try createing a template repository, as I've never made one before. And hey, everyone's gotta start somewhere right?
