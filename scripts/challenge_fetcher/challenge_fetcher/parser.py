@@ -1,7 +1,9 @@
 import pathlib
+import requests
 import bs4
 import challenge_fetcher
 import challenge_fetcher.scraper
+import challenge_fetcher.challenge
 import re
 
 
@@ -56,6 +58,65 @@ ABOUT_URL_REGEX is a compiled regular expression that matches strings of the for
     - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more word characters.
 """
 ABOUT_URL_REGEX = re.compile(r"^about=(\w+)")
+
+
+def parse_contents(
+    challenge_number: int,
+    response: requests.Response,
+    github_workaround: bool,
+) -> challenge_fetcher.challenge.Challenge | None:
+    """parse_contents Parse the contents of the HTTP response.
+
+    Parses the HTML contained in the HTTP response to create a Challenge object. This contains the relevant information
+    to generate a README file such as challenge number, challenge URL, challenge title, challenge description, and
+    remote content that needs to be downloaded when the README is created.
+
+    Args:
+        challenge_number (int): The number of the Project Euler challenge.
+        response (requests.Response): The HTTP response from the HTTP GET request.
+        github_workaround (bool): If True, a workaround for the GitHub MarkDown renderer not rendering the LaTeX /opcode function will be applied.
+
+    Returns:
+        challenge_fetcher.challenge.Challenge | None: A challenge object representing the parsed challenge data, or None if an error was encountered.
+    """
+
+    # If the provided HTTP response has an error code, return None.
+    if not response.ok:
+        return None
+
+    # Parse the HTML response content into a nice soup we can "pythonically" access.
+    soup = bs4.BeautifulSoup(response.content, "html.parser")
+
+    # On all of the pages from https://projecteuler.net/, the actual problem is contained within a div with the id "content".
+    # We are not interested in anything else on the page, so grab that.
+    page_content = soup.find("div", id="content")
+
+    # If there is no page content, return None.
+    if page_content is None:
+        print("Page content not found.")
+        return None
+
+    # The title is contained within the "content" div, and is contained within h2.
+    title = page_content.find("h2").text
+
+    # The description is contained within a div of the "problem_content" class. This is what we need to (somehow)
+    # parse into markdown.
+    description = page_content.find("div", class_="problem_content")
+
+    # Convert any URLs embedded in the description to be markdown URLs.
+    remote_content = convert_urls_to_markdown(description)
+
+    # Sanitise the description tag content to ensure it can be rendered as MarkDown.
+    description_text = sanitise_tag_text(description, github_workaround)
+
+    # Create a new challenge object to return, based on the properties from the page.
+    return challenge_fetcher.challenge.Challenge(
+        challenge_number,
+        response.url,
+        title,
+        description_text,
+        remote_content=remote_content,
+    )
 
 
 def sanitise_file_name(file_name: str) -> str:
