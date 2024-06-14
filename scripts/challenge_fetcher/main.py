@@ -1,5 +1,6 @@
 import challenge_fetcher
 import challenge_fetcher.arguments
+import challenge_fetcher.exporter
 import challenge_fetcher.scraper
 import challenge_fetcher.parser
 
@@ -26,5 +27,16 @@ if challenge_fetcher.arguments.validate_arguments(args):
         challenge = challenge_fetcher.parser.parse_contents(
             challenge_number, contents, args.github_workaround
         )
+
+        # Export the challenge to a README.md file, and get a status code back.
+        status = challenge_fetcher.exporter.export_challenge_readme(
+            challenge, args.output_dir, folder_num_digits
+        )
+
+        # Parse the status into a human-readable string.
+        status_string = challenge_fetcher.exporter.StatusMessages.get(status)
+
+        # Print the export status to the terminal.
+        print(f"Saving Challenge {challenge_number}: {status_string}")
 else:
     print("Input argument validation failed... Exiting.")
