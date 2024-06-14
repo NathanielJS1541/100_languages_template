@@ -21,5 +21,10 @@ if challenge_fetcher.arguments.validate_arguments(args):
         # Skip this challenge if the scraper couldn't return the contents.
         if contents is None:
             continue
+
+        # Parse the HTML into a "challenge", containing an URL, project number, title, and description.
+        challenge = challenge_fetcher.parser.parse_contents(
+            challenge_number, contents, args.github_workaround
+        )
 else:
     print("Input argument validation failed... Exiting.")
