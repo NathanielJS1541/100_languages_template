@@ -1,6 +1,7 @@
 import pathlib
 import enum
 import re
+import requests
 
 
 # Desired name for the desired MarkDown file inside the challenge folder.
@@ -25,6 +26,42 @@ StatusMessages = {
     ExportStatus.ALREADY_EXISTS: f"{README_NAME} already exists... Skipping!",
     ExportStatus.OUTPUT_DIR_IS_FILE: "Error! The specified output directory is a file.",
 }
+
+
+def download_remote_content(
+    output_dir: pathlib.Path, remote_content: dict[str, str] | None
+) -> None:
+    """download_remote_content Download the remote content for a challenge to the specified directory.
+
+    Args:
+        output_dir (pathlib.Path): The output directory that the content will be saved under.
+        remote_content (dict[str, str] | None): A dict containing the remote content to download, or None.
+    """
+
+    # If there is no content to download, return.
+    if remote_content is None:
+        return
+
+    # Loop through every item in the dictionary.
+    for file_name, remote_url in remote_content.items():
+        # Create the output path from the output directory and the file name.
+        output_path = output_dir.joinpath(file_name)
+
+        # Skip re-downloading files.
+        if output_path.exists():
+            # TODO: Hash check to ensure the file content is the same?
+            # TODO: Error reporting?
+            continue
+
+        # Get the response from the download URL.
+        response = requests.get(remote_url)
+
+        # TODO: error handling.
+        # Write to the output file if the request was successful.
+        if response.ok:
+            # Write the response content as binary to the output file.
+            with open(output_path, "wb") as local_content:
+                local_content.write(response.content)
 
 
 def generate_padded_number(number: int, total_digits: int) -> str:
