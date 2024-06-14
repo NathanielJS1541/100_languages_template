@@ -1,3 +1,4 @@
+import pathlib
 import bs4
 import challenge_fetcher
 import challenge_fetcher.scraper
@@ -55,6 +56,33 @@ ABOUT_URL_REGEX is a compiled regular expression that matches strings of the for
     - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more word characters.
 """
 ABOUT_URL_REGEX = re.compile(r"^about=(\w+)")
+
+
+def sanitise_file_name(file_name: str) -> str:
+    """sanitise_file_name Sanitise the file name of remote content.
+
+    The Project Euler website hosts all resources (such as images and files) in a few central directories, so need
+    unique names. When these are downloaded locally, they don't need to have unique names anymore, so this function
+    splits off the identifier and keeps the human readable part of the file name.
+
+    This also strips out any subdirectory names, and takes only the file "stem".
+
+    Args:
+        file_name (str): The filename of a remote resource.
+
+    Returns:
+        str: The "human readable" part of the filename.
+    """
+
+    # Temporarily convert the file name into a path to get the "stem".
+    temp_path = pathlib.Path(file_name)
+
+    # Split the stem on underscore and take the last part. The stem will be just the file name without any directories
+    # above it. The stem will be something like 00012_file.txt. Splitting on the underscore removes the unique ID.
+    name = temp_path.stem.split("_")[-1]
+
+    # Return the sanitised filename.
+    return name + temp_path.suffix
 
 
 def convert_urls_to_markdown(content: bs4.Tag) -> dict[str, str] | None:
