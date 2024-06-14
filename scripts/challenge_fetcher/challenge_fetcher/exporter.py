@@ -1,3 +1,4 @@
+import pathlib
 import enum
 import re
 
@@ -88,3 +89,28 @@ def generate_folder_name(
 
     # Construct the final folder name from the number string and title.
     return f"{challenge_number_string}_{folder_title}"
+
+
+def generate_folder_path(
+    challenge: challenge_fetcher.challenge.Challenge,
+    total_number_digits: int,
+    output_path: pathlib.Path,
+) -> pathlib.Path:
+    """generate_folder_path Generate a folder path from a challenge, number of digits, and output path.
+
+    The folder path will be a child of the specified output_path. It will be named based on the challenge number
+    (padded to the number of digits specified by total_number_digits) and the challenge title.
+
+    Args:
+        challenge (challenge_fetcher.challenge.Challenge): The Challenge to generate a folder for.
+        total_number_digits (int): The number of digits to pad the challenge number in the folder name to.
+        output_path (pathlib.Path): The path that the folder will be created in.
+
+    Returns:
+        pathlib.Path: A path to a folder named for the specified Challenge.
+    """
+
+    # Create a new path based on the output path, challenge number, and challenge title.
+    return output_path.joinpath(
+        generate_folder_name(challenge.number, challenge.title, total_number_digits)
+    )
