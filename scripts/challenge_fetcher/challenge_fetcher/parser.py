@@ -38,7 +38,9 @@ RESOURCE_URL_REGEX is a compiled regular expression that matches strings of the 
     - "." matches any character (except for a newline).
     - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more word characters.
 """
-RESOURCE_URL_REGEX = re.compile(r"^(project\/)?(resources|images)\/(.+\/)?(?P<filename>.+)")
+RESOURCE_URL_REGEX = re.compile(
+    r"^(project\/)?(resources|images)\/(.+\/)?(?P<filename>.+)"
+)
 
 """
 ABOUT_URL_REGEX is a compiled regular expression that matches strings of the form "about=<word>":
