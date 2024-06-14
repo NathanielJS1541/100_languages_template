@@ -14,7 +14,6 @@ beautifulsoup4 = "^4.12.3"
 [tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
 
-
 [tool.poetry.group.test.dependencies]
 pytest = "^8.2.0"
 
