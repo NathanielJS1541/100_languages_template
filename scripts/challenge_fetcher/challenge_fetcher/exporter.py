@@ -1,4 +1,5 @@
 import pathlib
+import challenge_fetcher.challenge
 import enum
 import re
 import requests
@@ -26,6 +27,76 @@ StatusMessages = {
     ExportStatus.ALREADY_EXISTS: f"{README_NAME} already exists... Skipping!",
     ExportStatus.OUTPUT_DIR_IS_FILE: "Error! The specified output directory is a file.",
 }
+
+
+def export_challenge_readme(
+    challenge: challenge_fetcher.challenge.Challenge,
+    output_path: pathlib.Path,
+    folder_num_digits: int,
+) -> ExportStatus:
+    """export_challenge_readme Export the README.md file for the given challenge.
+
+    Create a folder for the current challenge, and export the README.md file for the challenge along with any
+    required resources to the folder.
+
+    Args:
+        challenge (challenge_fetcher.challenge.Challenge): The Challenge object to export.
+        output_path (pathlib.Path): The output path for the export. This should be the same for all challenges.
+        folder_num_digits (int): The number of digits to pad the challenge number in the folder name to.
+
+    Returns:
+        ExportStatus: The status for the export operation.
+    """
+
+    # Ensure the specified output directory is not a file path.
+    if output_path.is_file():
+        return ExportStatus.OUTPUT_DIR_IS_FILE
+
+    # Ensure the output path is completely resolved.
+    output_path = output_path.resolve()
+
+    # Create the output directory. This will raise an error if the output directory does not have existing parents. If
+    # the file already exists, no error is raised. This will raise an error if it is not a directory (which should
+    # never happen as this is checked above).
+    output_path.mkdir(exist_ok=True)
+
+    # Get the path to the output folder for the current challenge.
+    folder_path = generate_folder_path(challenge, folder_num_digits, output_path)
+
+    # Create the folder for the current challenge, ignoring errors if it already exists.
+    folder_path.mkdir(exist_ok=True)
+
+    # Generate the full path for the README file.
+    readme_path = folder_path.joinpath(README_NAME)
+
+    if readme_path.exists():
+        # If the README file already exists, skip it and report a warning.
+        status = ExportStatus.ALREADY_EXISTS
+    else:
+        # If the README does not exist, create it and write the challenge description to it.
+        status = ExportStatus.OK
+
+        # Open the file for writing.
+        with open(readme_path, "w") as readme:
+            # Write the title to the file.
+            readme.write(
+                f"# Problem {generate_padded_number(challenge.number, folder_num_digits)}: {challenge.title}\n"
+            )
+
+            # Write the entire description to the README.
+            readme.write(f"{challenge.description}\n")
+
+            # At the end of the README, add the link to the original challenge page.
+            readme.write(
+                f"*For the original page, see [{challenge.url}]({challenge.url}).*\n"
+            )
+
+        # Download additional remote content that should already be linked in the README.
+        # TODO: Error reporting for external content downloads.
+        download_remote_content(folder_path, challenge.remote_content)
+
+    # Return the export status.
+    return status
 
 
 def download_remote_content(
