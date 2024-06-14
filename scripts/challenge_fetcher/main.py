@@ -1,6 +1,7 @@
 import challenge_fetcher
 import challenge_fetcher.arguments
 import challenge_fetcher.scraper
+import challenge_fetcher.parser
 
 # Get the command-line arguments using argparse.
 args = challenge_fetcher.arguments.parse_arguments()
