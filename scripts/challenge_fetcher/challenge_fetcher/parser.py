@@ -260,9 +260,11 @@ def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
     # Get the text contained in the BeautifulSoup tag.
     description_text = description.text
 
-    # For markdown, a newline is not only represented by a /n, but two spaces followed by a /n. This is to get the same visual effect as a
-    # new paragraph in the HTML.
-    description_text = description_text.replace("\n", "  \n")
+    # Strip leading and trailing whitespaces (in this case, newlines).
+    description_text = description_text.strip()
+
+    # For markdown, a newline does not add spacing between paragraphs. For this, two newlines are required instead.
+    description_text = description_text.replace("\n", "\n\n")
 
     # Workaround for GitHub not supporting \operatorname anymore (see https://github.com/github/markup/issues/1688).
     if github_workaround and "\\operatorname" in description_text:
