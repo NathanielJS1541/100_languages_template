@@ -17,6 +17,7 @@ class TestKnownChallenges:
         The following Challenges are used:
         - Challenge 1: Sanity check!
         - Challenge 7: Tests fixing of inline LaTeX followed immediately by text.
+        - Challenge 14: Tests <b> tag detection and replacement.
         - Challenge 39: Test fix for LaTeX containing curly braces {}.
         - Challenge 96: Tests identification of required remote content downloads, and that the references within the
           page have been replaced with MarkDown-style links. Also tests replacement of <i> tags with MarkDown syntax.
@@ -40,6 +41,14 @@ class TestKnownChallenges:
                 "https://projecteuler.net/problem=7",
                 "10001st Prime",
                 """By listing the first six prime numbers: $2, 3, 5, 7, 11$, and $13$, we can see that the $6\\text{th}$ prime is $13$.\n\nWhat is the $10\,001\\text{st}$ prime number?""",
+                None,
+            ),
+            # Test <b> tag detection and replacement.
+            14: challenge_fetcher.challenge.Challenge(
+                14,
+                "https://projecteuler.net/problem=14",
+                "Longest Collatz Sequence",
+                """The following iterative sequence is defined for the set of positive integers:\n\n$n \\to n/2$ ($n$ is even)\n\n$n \\to 3n + 1$ ($n$ is odd)\n\nUsing the rule above and starting with $13$, we generate the following sequence:\n\n$$13 \\to 40 \\to 20 \\to 10 \\to 5 \\to 16 \\to 8 \\to 4 \\to 2 \\to 1.$$\n\nIt can be seen that this sequence (starting at $13$ and finishing at $1$) contains $10$ terms. Although it has not been proved yet (Collatz Problem), it is thought that all starting numbers finish at $1$.\n\nWhich starting number, under one million, produces the longest chain?\n\n**NOTE:** Once the chain starts the terms are allowed to go above one million.""",
                 None,
             ),
             # Test LaTeX containing curly braces {}.
