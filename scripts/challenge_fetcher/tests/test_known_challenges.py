@@ -16,6 +16,8 @@ class TestKnownChallenges:
 
         The following Challenges are used:
         - Challenge 1: Sanity check!
+        - Challenge 96: Tests identification of required remote content downloads, and that the references within the
+          page have been replaced with MarkDown-style links. Also tests replacement of <i> tags with MarkDown syntax.
 
         Returns:
             dict[int, challenge_fetcher.challenge.Challenge]: A dictionary of desired Challenge object outputs.
@@ -30,6 +32,19 @@ class TestKnownChallenges:
                 """If we list all the natural numbers below $10$ that are multiples of $3$ or $5$, we get $3, 5, 6$ and $9$. The sum of these multiples is $23$.\n\nFind the sum of all the multiples of $3$ or $5$ below $1000$.""",
                 None,
             ),
+            # Test <img>, <a hrf>, and <i> tag detection and replacement.
+            96: challenge_fetcher.challenge.Challenge(
+                96,
+                "https://projecteuler.net/problem=96",
+                "Su Doku",
+                """Su Doku (Japanese meaning *number place*) is the name given to a popular puzzle concept. Its origin is unclear, but credit must be attributed to Leonhard Euler who invented a similar, and much more difficult, puzzle idea called Latin Squares. The objective of Su Doku puzzles, however, is to replace the blanks (or zeros) in a 9 by 9 grid in such that each row, column, and 3 by 3 box contains each of the digits 1 to 9. Below is an example of a typical starting puzzle grid and its solution grid.\n\n![1.png](./1.png)     ![2.png](./2.png)\n\nA well constructed Su Doku puzzle has a unique solution and can be solved by logic, although it may be necessary to employ "guess and test" methods in order to eliminate options (there is much contested opinion over this). The complexity of the search determines the difficulty of the puzzle; the example above is considered *easy* because it can be solved by straight forward direct deduction.\n\nThe 6K text file, [sudoku.txt](./sudoku.txt) (right click and 'Save Link/Target As...'), contains fifty different Su Doku puzzles ranging in difficulty, but all with unique solutions (the first puzzle in the file is the example above).\n\nBy solving all fifty puzzles find the sum of the 3-digit numbers found in the top left corner of each solution grid; for example, 483 is the 3-digit number found in the top left corner of the solution grid above.""",
+                {
+                    "1.png": "https://projecteuler.net/project/images/p096_1.png",
+                    "2.png": "https://projecteuler.net/project/images/p096_2.png",
+                    "sudoku.txt": "https://projecteuler.net/project/resources/p096_sudoku.txt",
+                },
+            ),
+        }
 
     def test_known_challenges(
         self, known_challenges: dict[int, challenge_fetcher.challenge.Challenge]
