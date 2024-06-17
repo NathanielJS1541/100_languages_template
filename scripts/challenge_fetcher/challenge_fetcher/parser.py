@@ -59,6 +59,36 @@ ABOUT_URL_REGEX is a compiled regular expression that matches strings of the for
 """
 ABOUT_URL_REGEX = re.compile(r"^about=(\w+)")
 
+"""
+FILE_NAME_REGEX is a compiled regular expression which "sanitises" filenames to remove query strings etc.
+- "^" asserts the start of a line.
+- "(?:.*_)?" is an optional non-capturing group, which removes the unique ID (i.e. "p096_") from the file name.
+  - "(...)" defines the capture group.
+  - "?:" denotes that it is a non-capturing group.
+  - "." matches any character (except for a newline).
+  - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more characters.
+  - "_" matches the literal string "_" used to separate the unique ID from the file name.
+  - "?" makes the capture group optional.
+- "(?P<filename>.*\..+)" is a named capturing group to match the name of the file:
+  - "(...)" defines the capture group.
+  - "?P<filename>" names the capture group "filename".
+  - "." matches any character (except for a newline).
+  - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more characters.
+  - "\." matches the literal string "." which separates the file name and extension.
+  - "." matches any character (except for a newline).
+  - "+?" is a lazy quantifier that matches one or more times, but as few times as possible. This is needed to ensure
+    the following optional capture group is used if possible.
+- "(?:\?.*)?" is an optional non-capturing group, which removes any query strings (i.e. "?1678992052") from the file name.
+  - "(...)" defines the capture group.
+  - "?:" denotes that it is a non-capturing group.
+  - "\?" matches the literal string "?", which separates the file name from the query string.
+  - "." matches any character (except for a newline).
+  - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more characters.
+  - "?" makes the capture group optional.
+- "$" asserts the end of a line.
+"""
+FILE_NAME_REGEX = re.compile(r"^(?:.+_)?(?P<filename>.+\..+?)(?:\?.*)?$")
+
 
 def parse_contents(
     challenge_number: int,
