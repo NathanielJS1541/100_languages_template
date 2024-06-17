@@ -154,7 +154,8 @@ def sanitise_file_name(file_name: str) -> str:
 
     The Project Euler website hosts all resources (such as images and files) in a few central directories, so need
     unique names. When these are downloaded locally, they don't need to have unique names anymore, so this function
-    splits off the identifier and keeps the human readable part of the file name.
+    splits off the identifier and keeps the human readable part of the file name. Some file URLs also use a
+    query-string, which should be removed from the filename.
 
     This also strips out any subdirectory names, and takes only the file "stem".
 
@@ -165,15 +166,16 @@ def sanitise_file_name(file_name: str) -> str:
         str: The "human readable" part of the filename.
     """
 
-    # Temporarily convert the file name into a path to get the "stem".
-    temp_path = pathlib.Path(file_name)
+    # Use the compiled regex expression to separate the filename from any additional "fluff".
+    filename_match = FILE_NAME_REGEX.search(file_name)
 
-    # Split the stem on underscore and take the last part. The stem will be just the file name without any directories
-    # above it. The stem will be something like 00012_file.txt. Splitting on the underscore removes the unique ID.
-    name = temp_path.stem.split("_")[-1]
+    if not filename_match:
+        raise ValueError(
+            f"Filename {file_name} could not be parsed using {FILE_NAME_REGEX.pattern}."
+        )
 
-    # Return the sanitised filename.
-    return name + temp_path.suffix
+    # Return the sanitised filename from the named capture group.
+    return filename_match.group("filename")
 
 
 def convert_urls_to_markdown(content: bs4.Tag) -> dict[str, str] | None:
