@@ -193,6 +193,7 @@ def convert_urls_to_markdown(content: bs4.Tag) -> dict[str, str] | None:
     Raises:
         KeyError: Multiple resource files with the same name were found on the page.
         NotImplementedError: An undefined resource type was found on the page.
+        NotImplementedError: A tag type was found that has not yet been implemented.
 
     Returns:
         dict[str, str] | None: A dictionary containing resource URLs keyed by file name to download, or None if no remote content is needed.
@@ -201,71 +202,24 @@ def convert_urls_to_markdown(content: bs4.Tag) -> dict[str, str] | None:
     # Create an empty dictionary to store remote content filenames and URLs.
     remote_content = {}
 
-    # Loop through all "a" tags in the content.
-    for link in content.find_all("a"):
+    # Loop through all "a" and "img" tags in the content.
+    for tag in content.find_all(["a", "img"]):
         # Get the URL from the tag.
-        url = link.get("href")
-
-        # Run compiled Regex expressions against the url to determine the type of content.
-        challenge_match = CHALLENGE_URL_REGEX.search(url)  # Links to another challenge.
-        resource_match = RESOURCE_URL_REGEX.search(
-            url
-        )  # Links to resources such as images and files.
-        about_match = ABOUT_URL_REGEX.search(
-            url
-        )  # Links to the Project Euler "about" pages (https://projecteuler.net/about).
-
-        if challenge_match:
-            # This type of link is a reference to another challenge.
-
-            # TODO: If problem is going to be downloaded, link it locally.
-
-            # Get the linked challenge number from the named capture group.
-            challenge_number = challenge_match.group("number")
-
-            # Construct a URL to the remote challenge page.
-            url = f"{challenge_fetcher.scraper.CHALLENGE_URL_BASE}{challenge_number}"
-        elif resource_match:
-            # This type of link is a reference to a resource such as an image or file. We will download these
-            # locally so they can committed to the repo and linked locally in the README.
-
-            # Get the linked file name from the Regex expression's named capture group.
-            file_name = sanitise_file_name(resource_match.group("filename"))
-
-            # Construct a URL for the remote content based on the base URL, and the complete URL that the Regex
-            # matched.
-            remote_url = challenge_fetcher.scraper.URL_BASE + url
-
-            # Swap the "URL" to a local reference to the file_name, so the README will link to the local file once it
-            # has been downloaded.
-            url = f"./{file_name}"
-
-            # For now, I'm assuming that each page will contain all uniquely named files. This will raise an error
-            # if this assumption is incorrect, so I can fix it later :).
-            if file_name in remote_content:
-                raise KeyError(f"Multiple resources found with the name {file_name}")
-
-            # Add the remote URL to the remote_content dictionary, keyed by the file_name that the resource needs to be
-            # downloaded to.
-            remote_content[file_name] = remote_url
-        elif about_match:
-            # This type of link is a reference to the "about" pages on different topics on the Project Euler website.
-            # This content won't be downloaded, and a link to the about page will just be added to the README.
-
-            # The URL from the bs4.Tag will be a relative URL. All we need to do to get a valid URL is add it to the
-            # Project Euler base URL.
-            url = f"{challenge_fetcher.scraper.URL_BASE}{url}"
+        if tag.name == "a":
+            # Resources are stored in anchor tags; the URL is stored in the "href" attribute.
+            url = tag.get("href")
+        elif tag.name == "img":
+            # Images are stored in image tags... (duh...); the URL is stored in the "src" attribute.
+            url = tag.get("src")
         else:
-            # Since I don't have the time (or willpower) to download and check every single challenge on the Project
-            # Euler website, this error will alert me (or anyone else) to a link type that I haven't come accross yet.
-            # If this is raised, inspect the URL and add some more Regex and handling (or open an issue on
-            # https://github.com/NathanielJS1541/100_languages_template) :).
-            raise NotImplementedError(
-                f"A URL was found to an unknown resource type: {url}"
-            )
+            # If a tag type has not been implemented, throw an error as the attribute to retreive the URL from has not
+            # been defined.
+            # This should never happen, unless content.find_all(["a", "img"]) is updated...
+            raise NotImplementedError(f'"{tag.name}" tags have not been implemented.')
 
-        # Replace the link ("<a>") tag with the MarkDown representation of the new URL.
-        link.replace_with(f"[{link.string}]({url})")
+        # Replace the tag with a markdown representation of the link.
+        # Also update the remote_content dictionary with any content that needs to be downloaded locally.
+        replace_tag_with_markdown_url(tag, url, remote_content)
 
     if not remote_content:
         # If no remote content was found, return None.
@@ -273,6 +227,83 @@ def convert_urls_to_markdown(content: bs4.Tag) -> dict[str, str] | None:
     else:
         # If there is remote content, return the dictionary storing it.
         return remote_content
+
+
+def replace_tag_with_markdown_url(
+    tag: bs4.Tag, url: str, remote_content: dict[str, str]
+) -> None:
+    """replace_tag_with_markdown_url Replace a bs4.Tag with the equivelant MarkDown representation.
+
+    Depending on the URL type, the remote_content dictionary may be updated to include content that needs to be
+    downloaded to the specified filename (key) in order for the MarkDown link to work.
+
+    Args:
+        tag (bs4.Tag): The tag to replace with MarkDown.
+        url (str): The string URL contained within the tag.
+        remote_content (dict[str, str]): A dictionary containing the desired filename and URL to the remote content that needs to be downloaded.
+
+    Raises:
+        KeyError: Multiple resource files with the same name were found on the page.
+        NotImplementedError: An undefined resource type was found on the page.
+    """
+
+    # Run compiled Regex expressions against the url to determine the type of content.
+    # Links to another challenge.
+    challenge_match = CHALLENGE_URL_REGEX.search(url)
+    # Links to resources such as images and files.
+    resource_match = RESOURCE_URL_REGEX.search(url)
+    # Links to the Project Euler "about" pages (https://projecteuler.net/about).
+    about_match = ABOUT_URL_REGEX.search(url)
+
+    if challenge_match:
+        # This type of link is a reference to another challenge.
+
+        # TODO: If problem is going to be downloaded, link it locally.
+
+        # Get the linked challenge number from the named capture group.
+        challenge_number = challenge_match.group("number")
+
+        # Construct a URL to the remote challenge page.
+        url = f"{challenge_fetcher.scraper.CHALLENGE_URL_BASE}{challenge_number}"
+    elif resource_match:
+        # This type of link is a reference to a resource such as an image or file. We will download these
+        # locally so they can committed to the repo and linked locally in the README.
+
+        # Get the linked file name from the Regex expression's named capture group.
+        file_name = sanitise_file_name(resource_match.group("filename"))
+
+        # Construct a URL for the remote content based on the base URL, and the complete URL that the Regex
+        # matched.
+        remote_url = challenge_fetcher.scraper.URL_BASE + url
+
+        # Swap the "URL" to a local reference to the file_name, so the README will link to the local file once it
+        # has been downloaded.
+        url = f"./{file_name}"
+
+        # For now, I'm assuming that each page will contain all uniquely named files. This will raise an error
+        # if this assumption is incorrect, so I can fix it later :).
+        if file_name in remote_content:
+            raise KeyError(f"Multiple resources found with the name {file_name}")
+
+        # Add the remote URL to the remote_content dictionary, keyed by the file_name that the resource needs to be
+        # downloaded to.
+        remote_content[file_name] = remote_url
+    elif about_match:
+        # This type of link is a reference to the "about" pages on different topics on the Project Euler website.
+        # This content won't be downloaded, and a link to the about page will just be added to the README.
+
+        # The URL from the bs4.Tag will be a relative URL. All we need to do to get a valid URL is add it to the
+        # Project Euler base URL.
+        url = f"{challenge_fetcher.scraper.URL_BASE}{url}"
+    else:
+        # Since I don't have the time (or willpower) to download and check every single challenge on the Project
+        # Euler website, this error will alert me (or anyone else) to a link type that I haven't come accross yet.
+        # If this is raised, inspect the URL and add some more Regex and handling (or open an issue on
+        # https://github.com/NathanielJS1541/100_languages_template) :).
+        raise NotImplementedError(f"A URL was found to an unknown resource type: {url}")
+
+    # Replace the link tag with the MarkDown representation of the new URL.
+    tag.replace_with(f"[{tag.string}]({url})")
 
 
 def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
