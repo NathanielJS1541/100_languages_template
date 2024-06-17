@@ -17,6 +17,7 @@ class TestKnownChallenges:
         The following Challenges are used:
         - Challenge 1: Sanity check!
         - Challenge 7: Tests fixing of inline LaTeX followed immediately by text.
+        - Challenge 39: Test fix for LaTeX containing curly braces {}.
         - Challenge 96: Tests identification of required remote content downloads, and that the references within the
           page have been replaced with MarkDown-style links. Also tests replacement of <i> tags with MarkDown syntax.
 
@@ -39,6 +40,14 @@ class TestKnownChallenges:
                 "https://projecteuler.net/problem=7",
                 "10001st Prime",
                 """By listing the first six prime numbers: $2, 3, 5, 7, 11$, and $13$, we can see that the $6\\text{th}$ prime is $13$.\n\nWhat is the $10\,001\\text{st}$ prime number?""",
+                None,
+            ),
+            # Test LaTeX containing curly braces {}.
+            39: challenge_fetcher.challenge.Challenge(
+                39,
+                "https://projecteuler.net/problem=39",
+                "Integer Right Triangles",
+                """If $p$ is the perimeter of a right angle triangle with integral length sides, $\\\{a, b, c\\\}$, there are exactly three solutions for $p = 120$.\n\n$\\\{20,48,52\\\}$, $\\\{24,45,51\\\}$, $\\\{30,40,50\\\}$\n\nFor which value of $p \le 1000$, is the number of solutions maximised?""",
                 None,
             ),
             # Test <img>, <a hrf>, and <i> tag detection and replacement.
