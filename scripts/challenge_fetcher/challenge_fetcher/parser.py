@@ -86,7 +86,8 @@ FILE_NAME_REGEX is a compiled regular expression which "sanitises" filenames to 
   - "(...)" defines the capture group.
   - "?:" denotes that it is a non-capturing group.
   - "." matches any character (except for a newline).
-  - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more characters.
+  - "+?" is a lazy quantifier that matches one or more times, but as few times as possible. It allows the previous
+    character class to capture one or more characters, but will only allow the group to match up to the first underscore.
   - "_" matches the literal string "_" used to separate the unique ID from the file name.
   - "?" makes the capture group optional.
 - "(?P<filename>.*\..+)" is a named capturing group to match the name of the file:
@@ -107,7 +108,7 @@ FILE_NAME_REGEX is a compiled regular expression which "sanitises" filenames to 
   - "?" makes the capture group optional.
 - "$" asserts the end of a line.
 """
-FILE_NAME_REGEX = re.compile(r"^(?:.+_)?(?P<filename>.+\..+?)(?:\?.*)?$")
+FILE_NAME_REGEX = re.compile(r"^(?:.+?_)?(?P<filename>.+\..+?)(?:\?.*)?$")
 
 
 def parse_contents(
