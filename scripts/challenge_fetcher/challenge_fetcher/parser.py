@@ -115,7 +115,10 @@ def parse_contents(
         return None
 
     # Parse the HTML response content into a nice soup we can "pythonically" access.
-    soup = bs4.BeautifulSoup(response.content, "html.parser")
+    # html5lib is used as a parser since some of the HTML on https://projecteuler.net/ does not parse properly using
+    # Python's html.parser. See #1 (https://github.com/NathanielJS1541/100_languages_template/issues/1) for more info.
+    # html5lib seems to generate HTML slower, but much "truer" to what a browser would display.
+    soup = bs4.BeautifulSoup(response.content, "html5lib")
 
     # On all of the pages from https://projecteuler.net/, the actual problem is contained within a div with the id "content".
     # We are not interested in anything else on the page, so grab that.
