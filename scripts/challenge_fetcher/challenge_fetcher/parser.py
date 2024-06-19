@@ -206,6 +206,9 @@ def convert_urls_to_markdown(content: bs4.Tag) -> dict[str, str] | None:
 
     # Loop through all "a" and "img" tags in the content.
     for tag in content.find_all(["a", "img"]):
+        # Initialise to False so that only the img tag detection needs to set it to True.
+        is_image = False
+
         # Get the URL from the tag.
         if tag.name == "a":
             # Resources are stored in anchor tags; the URL is stored in the "href" attribute.
@@ -213,6 +216,9 @@ def convert_urls_to_markdown(content: bs4.Tag) -> dict[str, str] | None:
         elif tag.name == "img":
             # Images are stored in image tags... (duh...); the URL is stored in the "src" attribute.
             url = tag.get("src")
+
+            # Indicate that the resource to download is an image, as the MarkDown tag needs to be altered.
+            is_image = True
         else:
             # If a tag type has not been implemented, throw an error as the attribute to retreive the URL from has not
             # been defined.
@@ -221,7 +227,8 @@ def convert_urls_to_markdown(content: bs4.Tag) -> dict[str, str] | None:
 
         # Replace the tag with a markdown representation of the link.
         # Also update the remote_content dictionary with any content that needs to be downloaded locally.
-        replace_tag_with_markdown_url(tag, url, remote_content)
+        # The is_image indication is needed, since images in MarkDown need a "!"  in front to render them.
+        replace_tag_with_markdown_url(tag, url, remote_content, is_image)
 
     if not remote_content:
         # If no remote content was found, return None.
@@ -232,7 +239,7 @@ def convert_urls_to_markdown(content: bs4.Tag) -> dict[str, str] | None:
 
 
 def replace_tag_with_markdown_url(
-    tag: bs4.Tag, url: str, remote_content: dict[str, str]
+    tag: bs4.Tag, url: str, remote_content: dict[str, str], is_image: bool
 ) -> None:
     """replace_tag_with_markdown_url Replace a bs4.Tag with the equivelant MarkDown representation.
 
@@ -243,6 +250,7 @@ def replace_tag_with_markdown_url(
         tag (bs4.Tag): The tag to replace with MarkDown.
         url (str): The string URL contained within the tag.
         remote_content (dict[str, str]): A dictionary containing the desired filename and URL to the remote content that needs to be downloaded.
+        is_image (bool): Indicates that the resource is an image, so the appropriate MarkDown syntax is used.
 
     Raises:
         KeyError: Multiple resource files with the same name were found on the page.
@@ -304,8 +312,15 @@ def replace_tag_with_markdown_url(
         # https://github.com/NathanielJS1541/100_languages_template) :).
         raise NotImplementedError(f"A URL was found to an unknown resource type: {url}")
 
-    # Replace the link tag with the MarkDown representation of the new URL.
-    tag.replace_with(f"[{tag.string}]({url})")
+    # Construct the MarkDown link syntax using the filename as the link text (or alt text for images), and the URL.
+    link_text = f"[{file_name}]({url})"
+
+    if is_image:
+        # If the link is an image, append an "!" to convert the link syntax to image syntax.
+        link_text = "!" + link_text
+
+    # Replace the tag with the MarkDown representation of the new link or image.
+    tag.replace_with(link_text)
 
 
 def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
