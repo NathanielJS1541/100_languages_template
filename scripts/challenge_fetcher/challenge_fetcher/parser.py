@@ -370,18 +370,23 @@ def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
         str: A string that is MarkDown-compatible, which contains the description for the Project Euler challenge.
     """
 
-    # Get the text contained in the BeautifulSoup tag.
-    description_text = description.text
-
-    # Strip leading and trailing whitespaces (in this case, newlines).
-    description_text = description_text.strip()
-
-    # Tags placed in a <div> sometimes end up with multiple newlines. Normalise newlines so they are ALWAYS singular.
-    description_text = description_text.replace("\n\n", "\n")
+    # Start with a blank string. This will be used to construct the string.
+    description_text = ""
 
     # For markdown, a newline does not add spacing between paragraphs. For this, two newlines are required instead.
-    # This may seem counter-intuative with the above line, but just trust me bro™️.
-    description_text = description_text.replace("\n", "\n\n")
+    # Loop through each type of element that may represent a "paragraph".
+    for element in description.find_all(["p", "div", "ul"]):
+        # Add the text for the current element:
+        # - separator="" is used as elements are to be concatonated directly together.
+        # - strip=False as it would also remove spaces which we don't want.
+        # - .strip("\n") so we can strip newlines out without altering other whitespace characters.
+        description_text += element.get_text(separator="", strip=False).strip("\n")
+
+        # At the end of each "paragraph", add the two newlines required to add spacing in the MarkDown output.
+        description_text += "\n\n"
+
+    # Strip leading and trailing whitespaces (in this case, newlines added after the last element).
+    description_text = description_text.strip()
 
     # Replace any non-breaking spaces from the text with normal spaces. In MarkDown, the non-breaking spaces render
     # weirdly so should be removed.
