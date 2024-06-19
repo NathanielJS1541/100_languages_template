@@ -6,6 +6,27 @@ import challenge_fetcher.challenge
 import re
 
 
+# Basic colour keywords as defined by the CSS3 specification (https://www.w3.org/TR/css-color-3/#valuea-def-color).
+BASIC_HTML_COLOURS = [
+    "black",
+    "silver",
+    "gray",
+    "white",
+    "maroon",
+    "red",
+    "purple",
+    "fuchsia",
+    "green",
+    "lime",
+    "olive",
+    "yellow",
+    "navy",
+    "blue",
+    "teal",
+    "aqua",
+]
+
+
 """
 CHALLENGE_URL_REGEX is a compiled regular expression that matches strings of the form "problem=<number>":
 - "^" asserts the start of a line.
@@ -191,6 +212,7 @@ def convert_text_formatting_to_markdown(content: bs4.Tag) -> None:
     Currently supported formatting styles:
     - Italic <i> tags.
     - Bold <b> tags.
+    - Span <span> tags used to colour text.
 
     Args:
         content (bs4.Tag): The bs4 content to replace formatting tags in.
@@ -200,8 +222,37 @@ def convert_text_formatting_to_markdown(content: bs4.Tag) -> None:
     """
 
     # Loop through all formatting tags in the content.
-    for tag in content.find_all(["i", "b"]):
-        if tag.name == "i":
+    # Spans must be done first as they MAY need to replace some of the <b> and <i> tags if they are present!
+    for tag in content.find_all(["span", "i", "b"]):
+        if tag.name == "span":
+            # <span> tags are used to colour text. The easiest way (that I know of...) to colour output text in
+            # MarkDown is to use LaTeX.
+
+            # IF a span is used to represent a colour, the class stores the colour name.
+            # We can assume there is only one class, as the colour name will be checked for validity.
+            colour = tag.get("class")[0]
+
+            # Check that the colour is one of the standard HTML colours.
+            if colour not in BASIC_HTML_COLOURS:
+                # If it's not, it is probably a span used for something else (like a tooltip). Play it safe and leave
+                # the span alone in this case!
+                continue
+
+            # Generate some LaTeX that will set the text within the tag to the specified colour.
+            coloured_latex = f"\\color{{{colour}}}{{{tag.text}}}"
+
+            # Additionally, MarkDown-style bold and italic syntax aren't compatable with this LaTeX. If there is a <b>
+            # or <i> tag inside the coloured span, we can add a bit of extra LaTeX to reflect this.
+            if tag.findChild("b"):
+                # Use \\bf in front of the LaTeX to make it bold and coloured.
+                coloured_latex = "\\bf" + coloured_latex
+            if tag.findChild("i"):
+                # Use \\it in front of the LaTeX to make it italic and coloured.
+                coloured_latex = "\\it" + coloured_latex
+
+            # Finally, replace the tag with the complete LaTeX expression so that it can be rendered inline ($..$).
+            tag.replace_with(f"${{{coloured_latex}}}$")
+        elif tag.name == "i":
             # <i> tags should be replaced with MarkDown italic syntax.
             tag.replace_with(f"*{tag.text}*")
         elif tag.name == "b":
@@ -209,7 +260,7 @@ def convert_text_formatting_to_markdown(content: bs4.Tag) -> None:
             tag.replace_with(f"**{tag.text}**")
         else:
             # If a tag type has not been implemented, throw an error.
-            # This should never happen, unless content.find_all(["i", "b"]) is updated...
+            # This should never happen, unless content.find_all(["span", "i", "b"]) is updated...
             raise NotImplementedError(f'"{tag.name}" tags have not been implemented.')
 
 
