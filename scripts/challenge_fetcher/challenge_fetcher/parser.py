@@ -376,7 +376,11 @@ def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
     # Strip leading and trailing whitespaces (in this case, newlines).
     description_text = description_text.strip()
 
+    # Tags placed in a <div> sometimes end up with multiple newlines. Normalise newlines so they are ALWAYS singular.
+    description_text = description_text.replace("\n\n", "\n")
+
     # For markdown, a newline does not add spacing between paragraphs. For this, two newlines are required instead.
+    # This may seem counter-intuative with the above line, but just trust me bro™️.
     description_text = description_text.replace("\n", "\n\n")
 
     # Replace any non-breaking spaces from the text with normal spaces. In MarkDown, the non-breaking spaces render
