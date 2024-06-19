@@ -379,6 +379,10 @@ def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
     # For markdown, a newline does not add spacing between paragraphs. For this, two newlines are required instead.
     description_text = description_text.replace("\n", "\n\n")
 
+    # Replace any non-breaking spaces from the text with normal spaces. In MarkDown, the non-breaking spaces render
+    # weirdly so should be removed.
+    description_text = description_text.replace("\xa0", " ")
+
     # Workaround for GitHub not supporting \operatorname anymore (see https://github.com/github/markup/issues/1688).
     if github_workaround and "\\operatorname" in description_text:
         # RegEx pattern to replace the occurrances of \operatorname in the description:
