@@ -157,7 +157,7 @@ def parse_contents(
     description = page_content.find("div", class_="problem_content")
 
     # Convert formatting syntax in the HTML to MarkDown syntax. This needs to be done before URLs are converted, to
-    # ensure that bold text within a link is maintained. If done after converting the URLs, the fomratting tags will
+    # ensure that bold text within a link is maintained. If done after converting the URLs, the formatting tags will
     # have already been removed.
     convert_text_formatting_to_markdown(description)
 
@@ -206,13 +206,72 @@ def sanitise_file_name(file_name: str) -> str:
     return filename_match.group("filename")
 
 
+def get_markdown_from_formatted_tag(tag: bs4.Tag) -> str | None:
+    """get_markdown_from_formatted_tag Convert the formatted text in a bs4.Tag to MarkDown syntax.
+
+    Currently supported formatting styles:
+    - Italic <i> and <em> tags.
+    - Bold <b> and <strong> tags.
+    - Span <span> tags used to colour text. (Must have a class matching a colour in BASIC_HTML_COLOURS).
+
+    Note that if the tag does not contain any formatting, None will be returned.
+
+    Args:
+        tag (bs4.Tag): The bs4 tag to return the MarkDown equivalent text for.
+
+    Raises:
+        NotImplementedError: A tag type was found that has not been implemented.
+
+    Returns:
+        str | None: A string representing the formatted tag text. None if no formatting was found.
+    """
+
+    # Default to returning None.
+    markdown_string = None
+
+    if tag.name == "span":
+        # <span> tags are used to colour text. The easiest way (that I know of...) to colour output text in
+        # MarkDown is to use LaTeX.
+
+        # IF a span is used to represent a colour, the class stores the colour name.
+        # We can assume there is only one class, as the colour name will be checked for validity.
+        colour = tag.get("class")[0]
+
+        # Check that the colour is one of the standard HTML colours.
+        # Note that if the colour is not a standard colour, the text will not be replaced. The span could represent
+        # something else (such as a tooltip) which will be replaced elsewhere.
+        if colour in BASIC_HTML_COLOURS:
+            # Generate some LaTeX that will set the text within the tag to the specified colour.
+            markdown_string = f"\\color{{{colour}}}{{{tag.text}}}"
+
+            # Additionally, MarkDown-style bold and italic syntax aren't compatable with this LaTeX. If there is a <b>,
+            # <strong>, <i>, or <em> tag inside the coloured span, we can add a bit of extra LaTeX to reflect this.
+            if tag.findChild("b") or tag.findChild("strong"):
+                # Use \\bf in front of the LaTeX to make it bold and coloured.
+                markdown_string = "\\bf" + markdown_string
+            if tag.findChild("i") or tag.findChild("em"):
+                # Use \\it in front of the LaTeX to make it italic and coloured.
+                markdown_string = "\\it" + markdown_string
+
+            # Finally, replace the tag with the complete LaTeX expression so that it can be rendered inline ($..$).
+            markdown_string = f"${{{markdown_string}}}$"
+    elif tag.name == "i" or tag.name == "em":
+        # <i> and <em> tags should be replaced with MarkDown italic syntax.
+        markdown_string = f"*{tag.text}*"
+    elif tag.name == "b" or tag.name == "strong":
+        # <b> and <strong> tags should be replaced with MarkDown bold syntax.
+        markdown_string = f"**{tag.text}**"
+    else:
+        # If a tag type has not been implemented, throw an error.
+        raise NotImplementedError(f'"{tag.name}" tags have not been implemented.')
+
+    return markdown_string
+
+
 def convert_text_formatting_to_markdown(content: bs4.Tag) -> None:
     """convert_text_formatting_to_markdown Replace formatting tags with MarkDown syntax.
 
-    Currently supported formatting styles:
-    - Italic <i> tags.
-    - Bold <b> tags.
-    - Span <span> tags used to colour text.
+    This uses the get_markdown_from_formatted_tag() method. For supported tags, check the docstring for that function.
 
     Args:
         content (bs4.Tag): The bs4 content to replace formatting tags in.
@@ -224,44 +283,13 @@ def convert_text_formatting_to_markdown(content: bs4.Tag) -> None:
     # Loop through all formatting tags in the content.
     # Spans must be done first as they MAY need to replace some of the <b> and <i> tags if they are present!
     for tag in content.find_all(["span", "i", "b"]):
-        if tag.name == "span":
-            # <span> tags are used to colour text. The easiest way (that I know of...) to colour output text in
-            # MarkDown is to use LaTeX.
+        # Get the formatted MarkDown string for the current tag.
+        equivalent_string = get_markdown_from_formatted_tag(tag)
 
-            # IF a span is used to represent a colour, the class stores the colour name.
-            # We can assume there is only one class, as the colour name will be checked for validity.
-            colour = tag.get("class")[0]
-
-            # Check that the colour is one of the standard HTML colours.
-            if colour not in BASIC_HTML_COLOURS:
-                # If it's not, it is probably a span used for something else (like a tooltip). Play it safe and leave
-                # the span alone in this case!
-                continue
-
-            # Generate some LaTeX that will set the text within the tag to the specified colour.
-            coloured_latex = f"\\color{{{colour}}}{{{tag.text}}}"
-
-            # Additionally, MarkDown-style bold and italic syntax aren't compatable with this LaTeX. If there is a <b>
-            # or <i> tag inside the coloured span, we can add a bit of extra LaTeX to reflect this.
-            if tag.findChild("b"):
-                # Use \\bf in front of the LaTeX to make it bold and coloured.
-                coloured_latex = "\\bf" + coloured_latex
-            if tag.findChild("i"):
-                # Use \\it in front of the LaTeX to make it italic and coloured.
-                coloured_latex = "\\it" + coloured_latex
-
-            # Finally, replace the tag with the complete LaTeX expression so that it can be rendered inline ($..$).
-            tag.replace_with(f"${{{coloured_latex}}}$")
-        elif tag.name == "i":
-            # <i> tags should be replaced with MarkDown italic syntax.
-            tag.replace_with(f"*{tag.text}*")
-        elif tag.name == "b":
-            # <b> tags should be replaced with MarkDown bold syntax.
-            tag.replace_with(f"**{tag.text}**")
-        else:
-            # If a tag type has not been implemented, throw an error.
-            # This should never happen, unless content.find_all(["span", "i", "b"]) is updated...
-            raise NotImplementedError(f'"{tag.name}" tags have not been implemented.')
+        # Only replace the tag if a string was returned. None will be returned if no formatting was found in the tag,
+        # in which the tag should be left for the get_string() method to handle later on.
+        if equivalent_string is not None:
+            tag.replace_with(equivalent_string)
 
 
 def convert_urls_to_markdown(content: bs4.Tag) -> dict[str, str] | None:
