@@ -135,6 +135,11 @@ def parse_contents(
     # parse into markdown.
     description = page_content.find("div", class_="problem_content")
 
+    # Convert formatting syntax in the HTML to MarkDown syntax. This needs to be done before URLs are converted, to
+    # ensure that bold text within a link is maintained. If done after converting the URLs, the fomratting tags will
+    # have already been removed.
+    convert_text_formatting_to_markdown(description)
+
     # Convert any URLs embedded in the description to be markdown URLs.
     remote_content = convert_urls_to_markdown(description)
 
@@ -178,6 +183,34 @@ def sanitise_file_name(file_name: str) -> str:
 
     # Return the sanitised filename from the named capture group.
     return filename_match.group("filename")
+
+
+def convert_text_formatting_to_markdown(content: bs4.Tag) -> None:
+    """convert_text_formatting_to_markdown Replace formatting tags with MarkDown syntax.
+
+    Currently supported formatting styles:
+    - Italic <i> tags.
+    - Bold <b> tags.
+
+    Args:
+        content (bs4.Tag): The bs4 content to replace formatting tags in.
+
+    Raises:
+        NotImplementedError: A tag type was found that hasn't been implemented.
+    """
+
+    # Loop through all formatting tags in the content.
+    for tag in content.find_all(["i", "b"]):
+        if tag.name == "i":
+            # <i> tags should be replaced with MarkDown italic syntax.
+            tag.replace_with(f"*{tag.text}*")
+        elif tag.name == "b":
+            # <b> tags should be replaced with MarkDown bold syntax.
+            tag.replace_with(f"**{tag.text}**")
+        else:
+            # If a tag type has not been implemented, throw an error.
+            # This should never happen, unless content.find_all(["i", "b"]) is updated...
+            raise NotImplementedError(f'"{tag.name}" tags have not been implemented.')
 
 
 def convert_urls_to_markdown(content: bs4.Tag) -> dict[str, str] | None:
