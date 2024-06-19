@@ -387,6 +387,15 @@ def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
     # weirdly so should be removed.
     description_text = description_text.replace("\xa0", " ")
 
+    # Some LaTeX expressions do not render correctly as the curly braces \{ and \} do not end up with a backslash. It
+    # seems like the backslash is interpreted as an escape character. In order to escape the backslash it must be
+    # preceeded with another backslash. To ensure this only alters LaTeX syntax, search for specifically the
+    # combination "\{" and "\}", and replace them with "\\{" and "\\}" respectively. Including the escape characters
+    # for this ends up looking a bit silly; "\\\\{" and "\\\\}".
+    # For more information, see the comment on issue #4:
+    # https://github.com/NathanielJS1541/100_languages_template/issues/4#issuecomment-2179358966
+    description_text = description_text.replace("\\{", "\\\\{").replace("\\}", "\\\\}")
+
     # Workaround for GitHub not supporting \operatorname anymore (see https://github.com/github/markup/issues/1688).
     if github_workaround and "\\operatorname" in description_text:
         # RegEx pattern to replace the occurrances of \operatorname in the description:
