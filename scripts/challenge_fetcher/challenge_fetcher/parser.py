@@ -156,6 +156,9 @@ def parse_contents(
     # parse into markdown.
     description = page_content.find("div", class_="problem_content")
 
+    # Convert tooltips to MarkDown syntax.
+    convert_tooltips_to_markdown(description)
+
     # Convert formatting syntax in the HTML to MarkDown syntax. This needs to be done before URLs are converted, to
     # ensure that bold text within a link is maintained. If done after converting the URLs, the formatting tags will
     # have already been removed.
@@ -204,6 +207,40 @@ def sanitise_file_name(file_name: str) -> str:
 
     # Return the sanitised filename from the named capture group.
     return filename_match.group("filename")
+
+
+def convert_tooltips_to_markdown(content: bs4.Tag) -> None:
+    """convert_tooltips_to_markdown Replace HTML tooltips with a MarkDown equivelant.
+
+    Args:
+        content (bs4.Tag): The bs4 content to replace tooltip tags in.
+
+    Raises:
+        NotImplementedError: A tag type that has not been implemented was encountered.
+    """
+
+    # Loop through every "span" tag that has the class "tooltiptext".
+    for tag in content.find_all("span", class_="tooltiptext"):
+        # Get the parent tag, which will reveal the desired formatting of the tooltip.
+        parent = tag.parent
+
+        # Get the text that is displayed in the tooltip. This appears in the pop-up.
+        tooltip_text = tag.text
+
+        # Remove the tag from the content, as it is no longer needed.
+        tag.decompose()
+
+        # Add MarkDown syntax for the formatting style if it is present on the parent tag.
+        target_text = get_markdown_from_formatted_tag(parent)
+
+        # If there is no return from get_markdown_from_formatted_tag(parent), then there was no style on the parent
+        # tag. In this case, just use the text with no formatting.
+        if target_text is None:
+            target_text = parent.text
+
+        # Replace the parent tag with the MarkDown representation of a "tooltip".
+        # "##" is used so that the link doesn't navigate to the top of the page.
+        parent.replace_with(f'[{target_text}](## "{tooltip_text}")')
 
 
 def get_markdown_from_formatted_tag(tag: bs4.Tag) -> str | None:
