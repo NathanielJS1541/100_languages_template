@@ -48,7 +48,7 @@ def parse_arguments() -> argparse.Namespace:
         "-g",
         "--github-workaround",
         dest="github_workaround",
-        help="The GitHub MarkDown renderer currently does not display the LaTeX operator \operatorname or inline LaTeX immediately followed by text correctly. Enabling this flag adds a workaround to allow them to be rendered correctly. See https://github.com/github/markup/issues/1688.",
+        help="The GitHub MarkDown renderer currently does not display the LaTeX operator \\operatorname or inline LaTeX immediately followed by text correctly. Enabling this flag adds a workaround to allow them to be rendered correctly. See https://github.com/github/markup/issues/1688.",
         action="store_true",
     )
 
