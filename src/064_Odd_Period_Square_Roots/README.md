@@ -2,9 +2,15 @@
 
 All square roots are periodic when written as continued fractions and can be written in the form:
 
+$\displaystyle \quad \quad \sqrt{N}=a_0+\frac 1 {a_1+\frac 1 {a_2+ \frac 1 {a3+ \dots}}}$
+
 For example, let us consider $\sqrt{23}:$
 
+$\quad \quad \sqrt{23}=4+\sqrt{23}-4=4+\frac 1 {\frac 1 {\sqrt{23}-4}}=4+\frac 1  {1+\frac{\sqrt{23}-3}7}$
+
 If we continue we would get the following expansion:
+
+$\displaystyle \quad \quad \sqrt{23}=4+\frac 1 {1+\frac 1 {3+ \frac 1 {1+\frac 1 {8+ \dots}}}}$
 
 The process can be summarised as follows:
 

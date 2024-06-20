@@ -10,7 +10,7 @@ The incredible formula $n^2 - 79n + 1601$ was discovered, which produces $80$ pr
 
 Considering quadratics of the form:
 
-where $|n|$ is the modulus/absolute value of $n\text{e}$.g. $|11| = 11$ and $|-4| = 4$
+$n^2 + an + b$, where $|a| < 1000$ and $|b| \le 1000\text{where}$ $|n|$ is the modulus/absolute value of $n\text{e}$.g. $|11| = 11$ and $|-4| = 4$
 
 Find the product of the coefficients, $a$ and $b$, for the quadratic expression that produces the maximum number of primes for consecutive values of $n$, starting with $n = 0$.
 

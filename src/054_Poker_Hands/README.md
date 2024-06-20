@@ -26,26 +26,6 @@ Consider the following five hands dealt to two players:
 **4** 4D 6S 9H QH QCPair of QueensHighest card Nine 3D 6D 7H QD QSPair of QueensHighest card Seven Player 1
 **5** 2H 2D 4C 4D 4SFull HouseWith Three Fours 3C 3D 3S 9S 9DFull Housewith Three Threes Player 1
 
-Pair of Fives
-
-Pair of Eights
-
-Highest card Ace
-
-Highest card Queen
-
-Three Aces
-
-Flush  with Diamonds
-
-Pair of QueensHighest card Nine
-
-Pair of QueensHighest card Seven
-
-Full HouseWith Three Fours
-
-Full Housewith Three Threes
-
 The file, [poker.txt](./poker.txt), contains one-thousand random hands dealt to two players. Each line of the file contains ten cards (separated by a single space): the first five are Player 1's cards and the last five are Player 2's cards. You can assume that all hands are valid (no invalid characters or repeated cards), each player's hand is in no specific order, and in each hand there is a clear winner.
 
 How many hands does Player 1 win?
