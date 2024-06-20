@@ -450,6 +450,9 @@ def replace_tag_with_markdown_url(
 
         # Construct a URL to the remote challenge page.
         url = f"{challenge_fetcher.scraper.CHALLENGE_URL_BASE}{challenge_number}"
+
+        # For challenge links, preserve the original link text.
+        link_text = tag.text
     elif resource_match:
         # This type of link is a reference to a resource such as an image or file. We will download these
         # locally so they can committed to the repo and linked locally in the README.
@@ -473,6 +476,9 @@ def replace_tag_with_markdown_url(
         # Add the remote URL to the remote_content dictionary, keyed by the file_name that the resource needs to be
         # downloaded to.
         remote_content[file_name] = remote_url
+
+        # For file and image downloads, ensure the link text or alt text is up to date with the sanitised file name.
+        link_text = file_name
     elif about_match:
         # This type of link is a reference to the "about" pages on different topics on the Project Euler website.
         # This content won't be downloaded, and a link to the about page will just be added to the README.
@@ -480,6 +486,9 @@ def replace_tag_with_markdown_url(
         # The URL from the bs4.Tag will be a relative URL. All we need to do to get a valid URL is add it to the
         # Project Euler base URL.
         url = f"{challenge_fetcher.scraper.URL_BASE}{url}"
+
+        # For "about" links, preserve the original link text.
+        link_text = tag.text
     else:
         # Since I don't have the time (or willpower) to download and check every single challenge on the Project
         # Euler website, this error will alert me (or anyone else) to a link type that I haven't come accross yet.
@@ -487,8 +496,8 @@ def replace_tag_with_markdown_url(
         # https://github.com/NathanielJS1541/100_languages_template) :).
         raise NotImplementedError(f"A URL was found to an unknown resource type: {url}")
 
-    # Construct the MarkDown link syntax using the filename as the link text (or alt text for images), and the URL.
-    link_text = f"[{file_name}]({url})"
+    # Construct the MarkDown link syntax using the link text and the URL.
+    link_text = f"[{link_text}]({url})"
 
     if is_image:
         # If the link is an image, append an "!" to convert the link syntax to image syntax.
