@@ -136,6 +136,66 @@ followed by text:
 """
 LATEX_WORKAROUND_REGEX = re.compile(r"(?<!\$)\$(?P<expression>[^$]+?)\$(?!\$)(?P<text>\w+)?")
 
+"""
+MULTILINE_LATEX_REGEX is a compiled regular expression which matches any multi-line LaTeX expression (starting with
+\begin{...} and ending with \end{...}) which are not already enclosed in $$..$$.
+
+This is particularly nasty as the re module only supports fixed-length look-behinds. You're welcome...
+
+- "(?<!\$\$)" is a negative look-behind assertion to make sure that the start of the LaTeX expression is not already
+  preceded by a "$$":
+  - "(?<!...)" is the syntax for a negative lookbehind assertion in regex.
+  - "\$\$" matches the literal string "$$".
+- "(?<!\$\$\n)" is a negative look-behind assertion to make sure that the start of the LaTeX expression is not already
+  preceded by a "$$\n":
+  - "(?<!...)" is the syntax for a negative lookbehind assertion in regex.
+  - "\$\$" matches the literal string "$$".
+  - "\n" matches a newline character.
+- "\\begin\{" matches the literal string "\begin{", which is the start of the multi-line LaTeX expression.
+- "(\w+?)" is a non-greedy capture group for one or more word characters, to capture the content within the \begin{...}:
+  - "\w" is the shorthand character class that matches any word character (equivelant to [a-zA-Z0-9_]).
+  - "+?" is a lazy quantifier that matches one or more times, but as few times as possible.
+- "\}" matches the literal string "}", which closes the "\begin{...}".
+- "((?:.|\n)+?)" is a non-greedy capture group for one or more of any character, or newline:
+  - "(...)" is the syntax for a capture group.
+  - "(?:.|\n)" is a non-capturing group which matches any character (including newlines):
+    - "(?:...)" is the syntax for a non-capturing group.
+    - "." matches any character (except for a newline).
+    - "|" is the OR operator, which allows matching the pattern before or after it.
+    - "\n" matches newlines.
+  - "+?" is a lazy quantifier that matches one or more times, but as few times as possible.
+- "\\end\{" matches the literal string "\end{", which is the start of the last tag in the multi-line LaTeX expression.
+- "(\w+?)" is a non-greedy capture group for one or more word characters, to capture the content within the \end{...}:
+  - "\w" is the shorthand character class that matches any word character (equivelant to [a-zA-Z0-9_]).
+  - "+?" is a lazy quantifier that matches one or more times, but as few times as possible.
+- "\}" matches the literal string "}", which closes the "\end{...}".
+- "(?!\$\$)" is a negative lookahead assertion to make sure the end of the LaTeX expression is not already followed by
+  a "$$":
+  - "(?!...)" is the syntax for a negative lookahead assertion in regex.
+  - "\$\$" matches the literal string "$$".
+- "(?!\n\$\$)" is a negative lookahead assertion to make sure the end of the LaTeX expression is not already followed
+  by a "\n$$":
+  - "(?!...)" is the syntax for a negative lookahead assertion in regex.
+  - "\n" matches a newline character.
+  - "\$\$" matches the literal string "$$".
+"""
+MULTILINE_LATEX_REGEX = re.compile(r"(?<!\$\$)(?<!\$\$\n)\\begin\{(\w+?)\}((?:.|\n)+?)\\end\{(\w+?)\}(?!\$\$)(?!\n\$\$)")
+
+"""
+MULTILINE_LATEX_REPLACEMENT_PATTERN is the replacement pattern for use with the MULTILINE_LATEX_REGEX.
+
+This just wraps the original LaTeX expression inside $$...$$, so that it can render in MarkDown.
+
+- "$$\n" is used to wrap the original LaTeX expression in "$$" on the line above for neatness.
+- "\\begin{\1}" replaces the first group of the MULTILINE_LATEX_REGEX, which captured the content within the brackets of
+  the "\begin{...}".
+- "\2" replaces the contents that was captured in the MULTILINE_LATEX_REGEX between the "\begin{...}" and "\end{...}".
+- "\\end{\3}" replaces the last group of the MULTILINE_LATEX_REGEX, which captured the content within the brackets of
+  the "\end{...}".
+- "\n$$" is used to close the LaTeX expression with a "$$" on the line below for neatness.
+"""
+MULTILINE_LATEX_REPLACEMENT_PATTERN = r"$$\n\\begin{\1}\2\\end{\3}\n$$"
+
 def parse_contents(
     challenge_number: int,
     response: requests.Response,
@@ -584,6 +644,10 @@ def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
     # For more information, see the comment on issue #4:
     # https://github.com/NathanielJS1541/100_languages_template/issues/4#issuecomment-2179358966
     description_text = description_text.replace("\\{", "\\\\{").replace("\\}", "\\\\}")
+
+    # Ensure that multi-line LaTeX expressions (between \begin{...} and \end{...}) are being enclosed in $$..$$ tags.
+    # This allows them to correctly render.
+    description_text = re.sub(MULTILINE_LATEX_REGEX, MULTILINE_LATEX_REPLACEMENT_PATTERN, description_text)
 
     # If requested, do the GitHub-specific workarounds.
     if github_workaround:
