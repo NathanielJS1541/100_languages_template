@@ -110,6 +110,31 @@ FILE_NAME_REGEX is a compiled regular expression which "sanitises" filenames to 
 """
 FILE_NAME_REGEX = re.compile(r"^(?:.+?_)?(?P<filename>.+\..+?)(?:\?.*)?$")
 
+"""
+LATEX_WORKAROUND_PATTERN is a compiled regular expression which matches inline LaTeX expressions which are immediately
+followed by text:
+- "(?<!\$)" is a negative lookbehind that asserts what immediately precedes the current position in the string is not a
+  dollar sign. This ensures the regex won't match blocks of LaTeX.
+- "\$" matches the literal string "$", which is the beginning of a LaTeX expression.
+- (?P<expression>[^$]+?) is a named capturing group that captures the contents of the LaTeX expression:
+  - "(...)" defines the capture group.
+  - "?P<expression>" names the capture group "expression".
+  - "[^$]" is a character class that matches any character except the dollar sign:
+    - "[...]" defines the character class.
+    - "^" is the negation operator, which inverts the following set of characters.
+    - "$" is the literal character "$".
+  - "+?" is a lazy quantifier that matches one or more times, but as few times as possible. This ensures that only the
+    contents of the LaTeX expression are captured.
+- "\$" matches the literal string "$", which is the end of a LaTeX expression.
+- "(?!\$)" is a negative lookahead that asserts what immediately follows the current position in the string is not a
+  dollar sign. This ensures the regex won't match blocks of LaTeX.
+- "(?P<text>\w+)" is a named capturing group that captures the text following the LaTeX expression:
+  - "(...)" defines the capture group.
+  - "?P<text>" names the capture group "text".
+  - "\w" is a shorthand character class to capture word characters (a-z, A-Z, 0-9, _).
+  - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more characters.
+"""
+LATEX_WORKAROUND_REGEX = re.compile(r"(?<!\$)\$(?P<expression>[^$]+?)\$(?!\$)(?P<text>\w+)?")
 
 def parse_contents(
     challenge_number: int,
@@ -473,6 +498,37 @@ def replace_tag_with_markdown_url(
     tag.replace_with(link_text)
 
 
+def latex_regex_repl(match: re.Match[str]) -> str:
+    """latex_regex_repl REPL for the GitHub LaTeX workaround re.sub().
+
+    This returns the text that will be used in the substitution based on the capture groups.
+
+    Args:
+        match (re.Match[str]): The match from the reegx expression.
+
+    Returns:
+        str: The string to replace the matched text.
+    """
+
+    # Get the contents of both named capture groups in the LATEX_WORKAROUND_REGEX.
+    # Note that the "text" group is optional.
+    expression = match.group("expression")
+    text = match.group("text")
+
+    # If the optional "text" group was also matched, add it as a text function to the end of the LaTeX expression.
+    # Note that all matches of the "expression" group will also call this function. There is no way to avoid returning
+    # a replacement string (apart from writing better regex I guess...) so when there is no text group just return the
+    # original string.
+    if text:
+        expression = f"{expression}\\text{{{text}}}"
+
+    # Close the complete expression inside the syntax for a LaTeX inline expression.
+    expression = f"${expression}$"
+
+    # Return the expression to use as a replacement.
+    return expression
+
+
 def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
     """sanitise_tag_text Sanitise the content of a bs4.Tag, and return it as a string.
 
@@ -481,7 +537,9 @@ def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
 
     Args:
         description (bs4.Tag): The bs4.Tag containing the challenge description.
-        github_workaround (bool): If True, a workaround for the GitHub MarkDown renderer not rendering the LaTeX /opcode function will be applied.
+        github_workaround (bool): If True, a workaround for the GitHub MarkDown renderer not rendering the LaTeX
+        /opcode function will be applied, as well as a workaround for inline LaTeX followed immediately by text not
+        rendering correctly on GitHub.
 
     Returns:
         str: A string that is MarkDown-compatible, which contains the description for the Project Euler challenge.
@@ -518,32 +576,39 @@ def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
     # https://github.com/NathanielJS1541/100_languages_template/issues/4#issuecomment-2179358966
     description_text = description_text.replace("\\{", "\\\\{").replace("\\}", "\\\\}")
 
-    # Workaround for GitHub not supporting \operatorname anymore (see https://github.com/github/markup/issues/1688).
-    if github_workaround and "\\operatorname" in description_text:
-        # RegEx pattern to replace the occurrances of \operatorname in the description:
-        # - "\\operatorname\{" matches the literal string \operatorname{ (with escape character for the \ and {).
-        # - "(.+?)" creates a capture group which matches the following:
-        #   - "." matches any character.
-        #   - "+" quantifier meaning that the previous "." can match one or more times.
-        #   - "?" makes the "+" quantifier lazy. It will try and match as few characters as possible while still
-        #     matching the next "}".
-        # - "\}" matches the literal string }.
-        # - "(.+?)" creates another capture group, as above.
-        # - "=" matches the literal string = at the end of the expression.
-        pattern = r"\\operatorname\{(.+?)\}(.+?)="
+    # If requested, do the GitHub-specific workarounds.
+    if github_workaround:
+        # Workaround for GitHub not supporting \operatorname anymore (see https://github.com/github/markup/issues/1688).
+        if "\\operatorname" in description_text:
+            # RegEx pattern to replace the occurrances of \operatorname in the description:
+            # - "\\operatorname\{" matches the literal string \operatorname{ (with escape character for the \ and {).
+            # - "(.+?)" creates a capture group which matches the following:
+            #   - "." matches any character.
+            #   - "+" quantifier meaning that the previous "." can match one or more times.
+            #   - "?" makes the "+" quantifier lazy. It will try and match as few characters as possible while still
+            #     matching the next "}".
+            # - "\}" matches the literal string }.
+            # - "(.+?)" creates another capture group, as above.
+            # - "=" matches the literal string = at the end of the expression.
+            pattern = r"\\operatorname\{(.+?)\}(.+?)="
 
-        # Replacement expression to define how the capture groups are included in the replaced text:
-        # - "\\mathop{\\text{" is the literal string that will replace \operatorname{ with \mathop{\text{.
-        # - "\1" is a backreference to the first capture group in the pattern. This corresponds to text captured by
-        #   "(.+?)" inside the \\operatorname{...} in the original string.
-        # - "}}" is the literal string which will close the \text{} and \mathop{} LaTeX commands.
-        # - "\2" is a backreference to the second capture group in the pattern. This corresponds to the text captured
-        #   by "(.+?)" between the "}" and "=" in the original string.
-        # - "=" is the literal string =, which ends the replacement.
-        replacement = r"\\mathop{\\text{\1}}\2="
+            # Replacement expression to define how the capture groups are included in the replaced text:
+            # - "\\mathop{\\text{" is the literal string that will replace \operatorname{ with \mathop{\text{.
+            # - "\1" is a backreference to the first capture group in the pattern. This corresponds to text captured by
+            #   "(.+?)" inside the \\operatorname{...} in the original string.
+            # - "}}" is the literal string which will close the \text{} and \mathop{} LaTeX commands.
+            # - "\2" is a backreference to the second capture group in the pattern. This corresponds to the text
+            #   captured by "(.+?)" between the "}" and "=" in the original string.
+            # - "=" is the literal string =, which ends the replacement.
+            replacement = r"\\mathop{\\text{\1}}\2="
 
-        # Use the RegEx pattern and replacement strings to replace \operatorname{...} with \mathop{\text{...}} in the
-        # description text.
-        description_text = re.sub(pattern, replacement, description_text)
+            # Use the RegEx pattern and replacement strings to replace \operatorname{...} with \mathop{\text{...}} in
+            # the description text.
+            description_text = re.sub(pattern, replacement, description_text)
+        
+        # Workaround for GitHub not properly rendering LaTeX immediately followed by text.
+        # See #2 (https://github.com/NathanielJS1541/100_languages_template/issues/2).
+        # This just adds any text immediately next to an inline LaTeX expression into the LaTeX.
+        description_text = re.sub(LATEX_WORKAROUND_REGEX, latex_regex_repl, description_text)
 
     return description_text
