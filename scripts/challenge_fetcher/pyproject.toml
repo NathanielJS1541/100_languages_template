@@ -5,6 +5,7 @@ authors = ["Nathaniel Struselis <nathaniel.struselis@hotmail.co.uk>"]
 readme = "README.md"
 license = "AGPL-3.0-only"
 package-mode = false
+version = "0.1"
 
 [tool.poetry.dependencies]
 python = "^3.11"
