@@ -78,18 +78,8 @@ def export_challenge_readme(
 
         # Open the file for writing.
         with open(readme_path, "w") as readme:
-            # Write the title to the file.
-            readme.write(
-                f"# Problem {generate_padded_number(challenge.number, folder_num_digits)}: {challenge.title}\n"
-            )
-
-            # Write the entire description to the README.
-            readme.write(f"{challenge.description}\n")
-
-            # At the end of the README, add the link to the original challenge page.
-            readme.write(
-                f"*For the original page, see [{challenge.url}]({challenge.url}).*\n"
-            )
+            # Generate the MarkDown content for the specified challenge and write it to the README.
+            readme.write(generate_challenge_readme(challenge, folder_num_digits))
 
         # Download additional remote content that should already be linked in the README.
         # TODO: Error reporting for external content downloads.
@@ -97,6 +87,46 @@ def export_challenge_readme(
 
     # Return the export status.
     return status
+
+
+def generate_challenge_readme(
+    challenge: challenge_fetcher.challenge.Challenge,
+    folder_num_digits: int,
+) -> str:
+    """generate_challenge_readme Generate a MarkDown README for the provided Challenge object.
+
+    Args:
+        challenge (challenge_fetcher.challenge.Challenge): The Challenge to generate the README for.
+        folder_num_digits (int): The number of digits to display the challenge number to.
+
+    Returns:
+        str: The MarkDown README for the provided challenge.
+    """
+
+    # Write the challenge number and title to the file.
+    markdown_content = f"# Problem {generate_padded_number(challenge.number, folder_num_digits)}: {challenge.title}"
+
+    # Add spacing between the title and the description. This inserts a blank line for spacing.
+    markdown_content += "\n\n"
+
+    # Write the entire description to the README. This text should already have been formatted to MarkDown syntax by
+    # the parser, including newlines.
+    markdown_content += f"{challenge.description}"
+
+    # Add spacing between the description and the footnote.
+    markdown_content += "\n\n"
+
+    # At the end of the README, add a footnote with a link to the original challenge page.
+    markdown_content += (
+        f"*For the original page, see [{challenge.url}]({challenge.url}).*"
+    )
+
+    # Finish the README with a newline. This is just good practice and will keep some MarkDown linters happy.
+    # For more info, see https://github.com/DavidAnson/markdownlint/blob/v0.34.0/doc/md047.md.
+    markdown_content += "\n"
+
+    # Return the constructed markdown as a complete string.
+    return markdown_content
 
 
 def download_remote_content(
