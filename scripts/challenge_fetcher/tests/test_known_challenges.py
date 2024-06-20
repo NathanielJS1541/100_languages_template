@@ -17,6 +17,7 @@ class TestKnownChallenges:
         The following Challenges are used:
         - Challenge 1: Sanity check!
         - Challenge 5: Tests replacement of tooltips.
+        - Challenge 6: Tests LaTeX code block not in a paragraph.
         - Challenge 7: Tests fixing of inline LaTeX followed immediately by text.
         - Challenge 11: Tests <b> tag and colour replacement in text.
         - Challenge 14: Tests <b> tag detection and replacement.
@@ -43,6 +44,14 @@ class TestKnownChallenges:
                 "https://projecteuler.net/problem=5",
                 "Smallest Multiple",
                 """$2520$ is the smallest number that can be divided by each of the numbers from $1$ to $10$ without any remainder.\n\nWhat is the smallest positive number that is [**evenly divisible**](## "divisible with no remainder") by all of the numbers from $1$ to $20$?""",
+                None,
+            ),
+            # Test LaTeX code block not in a paragraph.
+            6: challenge_fetcher.challenge.Challenge(
+                6,
+                "https://projecteuler.net/problem=6",
+                "Sum Square Difference",
+                """The sum of the squares of the first ten natural numbers is,\n\n$$1^2 + 2^2 + ... + 10^2 = 385.$$\n\nThe square of the sum of the first ten natural numbers is,\n\n$$(1 + 2 + ... + 10)^2 = 55^2 = 3025.$$\n\nHence the difference between the sum of the squares of the first ten natural numbers and the square of the sum is $3025 - 385 = 2640$.\n\nFind the difference between the sum of the squares of the first one hundred natural numbers and the square of the sum.""",
                 None,
             ),
             # Test inline LaTeX followed immediately by text.
