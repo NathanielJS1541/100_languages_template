@@ -614,22 +614,33 @@ def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
         str: A string that is MarkDown-compatible, which contains the description for the Project Euler challenge.
     """
 
-    # Start with a blank string. This will be used to construct the string.
-    description_text = ""
+    # Copy the list of child elements so elements can be removed from description whilst enumerating over them.
+    child_elements = description.contents.copy()
 
-    # For markdown, a newline does not add spacing between paragraphs. For this, two newlines are required instead.
-    # Loop through each type of element that may represent a "paragraph".
-    for element in description.find_all(["p", "div", "ul"]):
-        # Add the text for the current element:
-        # - separator="" is used as elements are to be concatonated directly together.
-        # - strip=False as it would also remove spaces which we don't want.
-        # - .strip("\n") so we can strip newlines out without altering other whitespace characters.
-        description_text += element.get_text(separator="", strip=False).strip("\n")
+    # Loop over each child element to remove them or replace them with formatted text.
+    for child in child_elements:
+        if child.text.isspace():
+            # If the child element is just whitespace, remove it since it will mess up the formatting when the
+            # description gets converted to text. In order to mimic the HTML layout in MarkDown, I am relying entirely
+            # on tags like <p>, <div> etc. to know where to place newlines.
+            description.contents.remove(child)
+        else:
+            # If there is some text content to the child element, replace it with a text representation of it.
+            # strip=False).strip("\n") may seem odd at first, but strip=True would also strip out spaces. I need to
+            # ensure that only newlines are removed, so an external call to .strip("\n") is used.
+            # The text representation of the child is placed between newlines, so that the text from each element will
+            # end up at most two newlines from the next (a paragraph space in MarkDown).
+            child_text = "\n" + child.get_text(separator="", strip=False).strip("\n") + "\n"
 
-        # At the end of each "paragraph", add the two newlines required to add spacing in the MarkDown output.
-        description_text += "\n\n"
+            # Replace the child with its text representation.
+            child.replace_with(child_text)
 
-    # Strip leading and trailing whitespaces (in this case, newlines added after the last element).
+    # Get the text representation of the description. strip=False is used here to avoid stripping out all of the
+    # newlines we just deliberately placed between each element.
+    description_text = description.get_text(separator="", strip=False)
+
+    # Strip leading and trailing whitespaces to ensure consistent spacing from the title and footnote when it is added
+    # to the MarkDown file.
     description_text = description_text.strip()
 
     # Replace any non-breaking spaces from the text with normal spaces. In MarkDown, the non-breaking spaces render
