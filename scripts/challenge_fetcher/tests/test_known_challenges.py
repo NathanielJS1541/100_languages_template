@@ -63,6 +63,14 @@ class TestKnownChallenges:
                 """By listing the first six prime numbers: $2, 3, 5, 7, 11$, and $13$, we can see that the $6\\text{th}$ prime is $13$.\n\nWhat is the $10\,001\\text{st}$ prime number?""",
                 None,
             ),
+            # Test replacement of <br> tags.
+            9: challenge_fetcher.challenge.Challenge(
+                9,
+                "https://projecteuler.net/problem=9",
+                "Special Pythagorean Triplet",
+                """A Pythagorean triplet is a set of three natural numbers, $a \\lt b \\lt c$, for which,\n$$a^2 + b^2 = c^2.$$\n\nFor example, $3^2 + 4^2 = 9 + 16 = 25 = 5^2$.\n\nThere exists exactly one Pythagorean triplet for which $a + b + c = 1000$.\nFind the product $abc$.""",
+                None,
+            ),
             # Test <b> tags and colours replacement.
             11: challenge_fetcher.challenge.Challenge(
                 11,
