@@ -5,7 +5,6 @@ import challenge_fetcher.scraper
 import challenge_fetcher.challenge
 import re
 
-
 # Basic colour keywords as defined by the CSS3 specification (https://www.w3.org/TR/css-color-3/#valuea-def-color).
 BASIC_HTML_COLOURS = [
     "black",
@@ -26,178 +25,163 @@ BASIC_HTML_COLOURS = [
     "aqua",
 ]
 
-
-"""
-CHALLENGE_URL_REGEX is a compiled regular expression that matches strings of the form "problem=<number>":
-- "^" asserts the start of a line.
-- "problem=" matches the literal string "problem=".
-- "(?P<number>\d+)" is a named capturing group to capture one or more digits:
-  - "(...)" defines the capture group.
-  - "?P<number>" names the capture group "number".
-  - "\d" is a shorthand character class to capture digits (0-9).
-  - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more digits.
-"""
+# CHALLENGE_URL_REGEX is a compiled regular expression that matches strings of the form "problem=<number>":
+# - "^" asserts the start of a line.
+# - "problem=" matches the literal string "problem=".
+# - "(?P<number>\d+)" is a named capturing group to capture one or more digits:
+#   - "(...)" defines the capture group.
+#   - "?P<number>" names the capture group "number".
+#   - "\d" is a shorthand character class to capture digits (0-9).
+#   - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more digits.
 CHALLENGE_URL_REGEX = re.compile(r"^problem=(?P<number>\d+)")
 
-"""
-RESOURCE_URL_REGEX is a compiled regular expression that matches strings of the form "resources/<optional_path>/<filename>",
-"project/resources/<optional_path>/<filename>", "images/<optional_path>/<filename>", and "project/images/<optional_path>/<filename>":
-- "^" asserts the start of a line.
-- "(project\/)?" is a capture group that matches the optional literal string "project/".
-  - "(...)" defines the capture group.
-  - "?" makes the capture group optional.
-- "(resources|images)" matches either the literal string "resources" or "images".
-  - "(...)" defines the capture group.
-  - "resources" matches the literal string "resources".
-  - "|" is the OR operator.
-  - "images" matches the literal string "images".
-- "\/" matches the literal string "/".
-- "(.+\/)?" is an optional capture group to match any characters followed by a "/":
-  - "(...)" defines the capture group.
-  - "." matches any character (except for a newline).
-  - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more word characters.
-  - "\/" matches the literal "/".
-  - "?" makes the capture group optional.
-- "(?P<filename>.+)" is a named capturing group to match any characters:
-  - "(...)" defines the capture group.
-  - "?P<filename>" names the capture group "filename".
-  - "." matches any character (except for a newline).
-  - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more word characters.
-"""
+# RESOURCE_URL_REGEX is a compiled regular expression that matches strings of the form "resources/<optional_path>/<filename>",
+# "project/resources/<optional_path>/<filename>", "images/<optional_path>/<filename>", and "project/images/<optional_path>/<filename>":
+# - "^" asserts the start of a line.
+# - "(project\/)?" is a capture group that matches the optional literal string "project/".
+#   - "(...)" defines the capture group.
+#   - "?" makes the capture group optional.
+# - "(resources|images)" matches either the literal string "resources" or "images".
+#   - "(...)" defines the capture group.
+#   - "resources" matches the literal string "resources".
+#   - "|" is the OR operator.
+#   - "images" matches the literal string "images".
+# - "\/" matches the literal string "/".
+# - "(.+\/)?" is an optional capture group to match any characters followed by a "/":
+#   - "(...)" defines the capture group.
+#   - "." matches any character (except for a newline).
+#   - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more word characters.
+#   - "\/" matches the literal "/".
+#   - "?" makes the capture group optional.
+# - "(?P<filename>.+)" is a named capturing group to match any characters:
+#   - "(...)" defines the capture group.
+#   - "?P<filename>" names the capture group "filename".
+#   - "." matches any character (except for a newline).
+#   - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more word characters.
 RESOURCE_URL_REGEX = re.compile(
     r"^(project\/)?(resources|images)\/(.+\/)?(?P<filename>.+)"
 )
 
-"""
-ABOUT_URL_REGEX is a compiled regular expression that matches strings of the form "about=<word>":
-- "^" asserts the start of a line.
-- "about=" matches the literal string "about=".
-- "(\w+)" is a capturing group to capture one or more word characters:
-  - "(...)" defines the capture group.
-  - "\w" is a shorthand character class to capture word characters (a-z, A-Z, 0-9, _).
-  - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more word characters.
-"""
+# ABOUT_URL_REGEX is a compiled regular expression that matches strings of the form "about=<word>":
+# - "^" asserts the start of a line.
+# - "about=" matches the literal string "about=".
+# - "(\w+)" is a capturing group to capture one or more word characters:
+#   - "(...)" defines the capture group.
+#   - "\w" is a shorthand character class to capture word characters (a-z, A-Z, 0-9, _).
+#   - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more word characters.
 ABOUT_URL_REGEX = re.compile(r"^about=(\w+)")
 
-"""
-FILE_NAME_REGEX is a compiled regular expression which "sanitises" filenames to remove query strings etc.
-- "^" asserts the start of a line.
-- "(?:.*_)?" is an optional non-capturing group, which removes the unique ID (i.e. "p096_") from the file name.
-  - "(...)" defines the capture group.
-  - "?:" denotes that it is a non-capturing group.
-  - "." matches any character (except for a newline).
-  - "+?" is a lazy quantifier that matches one or more times, but as few times as possible. It allows the previous
-    character class to capture one or more characters, but will only allow the group to match up to the first underscore.
-  - "_" matches the literal string "_" used to separate the unique ID from the file name.
-  - "?" makes the capture group optional.
-- "(?P<filename>.*\..+)" is a named capturing group to match the name of the file:
-  - "(...)" defines the capture group.
-  - "?P<filename>" names the capture group "filename".
-  - "." matches any character (except for a newline).
-  - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more characters.
-  - "\." matches the literal string "." which separates the file name and extension.
-  - "." matches any character (except for a newline).
-  - "+?" is a lazy quantifier that matches one or more times, but as few times as possible. This is needed to ensure
-    the following optional capture group is used if possible.
-- "(?:\?.*)?" is an optional non-capturing group, which removes any query strings (i.e. "?1678992052") from the file name.
-  - "(...)" defines the capture group.
-  - "?:" denotes that it is a non-capturing group.
-  - "\?" matches the literal string "?", which separates the file name from the query string.
-  - "." matches any character (except for a newline).
-  - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more characters.
-  - "?" makes the capture group optional.
-- "$" asserts the end of a line.
-"""
+# FILE_NAME_REGEX is a compiled regular expression which "sanitises" filenames to remove query strings etc.
+# - "^" asserts the start of a line.
+# - "(?:.*_)?" is an optional non-capturing group, which removes the unique ID (i.e. "p096_") from the file name.
+#   - "(...)" defines the capture group.
+#   - "?:" denotes that it is a non-capturing group.
+#   - "." matches any character (except for a newline).
+#   - "+?" is a lazy quantifier that matches one or more times, but as few times as possible. It allows the previous
+#     character class to capture one or more characters, but will only allow the group to match up to the first underscore.
+#   - "_" matches the literal string "_" used to separate the unique ID from the file name.
+#   - "?" makes the capture group optional.
+# - "(?P<filename>.*\..+)" is a named capturing group to match the name of the file:
+#   - "(...)" defines the capture group.
+#   - "?P<filename>" names the capture group "filename".
+#   - "." matches any character (except for a newline).
+#   - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more characters.
+#   - "\." matches the literal string "." which separates the file name and extension.
+#   - "." matches any character (except for a newline).
+#   - "+?" is a lazy quantifier that matches one or more times, but as few times as possible. This is needed to ensure
+#     the following optional capture group is used if possible.
+# - "(?:\?.*)?" is an optional non-capturing group, which removes any query strings (i.e. "?1678992052") from the file name.
+#   - "(...)" defines the capture group.
+#   - "?:" denotes that it is a non-capturing group.
+#   - "\?" matches the literal string "?", which separates the file name from the query string.
+#   - "." matches any character (except for a newline).
+#   - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more characters.
+#   - "?" makes the capture group optional.
+# - "$" asserts the end of a line.
 FILE_NAME_REGEX = re.compile(r"^(?:.+?_)?(?P<filename>.+\..+?)(?:\?.*)?$")
 
-"""
-LATEX_WORKAROUND_PATTERN is a compiled regular expression which matches inline LaTeX expressions which are immediately
-followed by text:
-- "(?<!\$)" is a negative lookbehind that asserts what immediately precedes the current position in the string is not a
-  dollar sign. This ensures the regex won't match blocks of LaTeX.
-- "\$" matches the literal string "$", which is the beginning of a LaTeX expression.
-- (?P<expression>[^$]+?) is a named capturing group that captures the contents of the LaTeX expression:
-  - "(...)" defines the capture group.
-  - "?P<expression>" names the capture group "expression".
-  - "[^$]" is a character class that matches any character except the dollar sign:
-    - "[...]" defines the character class.
-    - "^" is the negation operator, which inverts the following set of characters.
-    - "$" is the literal character "$".
-  - "+?" is a lazy quantifier that matches one or more times, but as few times as possible. This ensures that only the
-    contents of the LaTeX expression are captured.
-- "\$" matches the literal string "$", which is the end of a LaTeX expression.
-- "(?!\$)" is a negative lookahead that asserts what immediately follows the current position in the string is not a
-  dollar sign. This ensures the regex won't match blocks of LaTeX.
-- "(?P<text>\w+)" is a named capturing group that captures the text following the LaTeX expression:
-  - "(...)" defines the capture group.
-  - "?P<text>" names the capture group "text".
-  - "\w" is a shorthand character class to capture word characters (a-z, A-Z, 0-9, _).
-  - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more characters.
-"""
+# LATEX_WORKAROUND_PATTERN is a compiled regular expression which matches inline LaTeX expressions which are immediately
+# followed by text:
+# - "(?<!\$)" is a negative lookbehind that asserts what immediately precedes the current position in the string is not a
+#   dollar sign. This ensures the regex won't match blocks of LaTeX.
+# - "\$" matches the literal string "$", which is the beginning of a LaTeX expression.
+# - (?P<expression>[^$]+?) is a named capturing group that captures the contents of the LaTeX expression:
+#   - "(...)" defines the capture group.
+#   - "?P<expression>" names the capture group "expression".
+#   - "[^$]" is a character class that matches any character except the dollar sign:
+#     - "[...]" defines the character class.
+#     - "^" is the negation operator, which inverts the following set of characters.
+#     - "$" is the literal character "$".
+#   - "+?" is a lazy quantifier that matches one or more times, but as few times as possible. This ensures that only the
+#     contents of the LaTeX expression are captured.
+# - "\$" matches the literal string "$", which is the end of a LaTeX expression.
+# - "(?!\$)" is a negative lookahead that asserts what immediately follows the current position in the string is not a
+#   dollar sign. This ensures the regex won't match blocks of LaTeX.
+# - "(?P<text>\w+)" is a named capturing group that captures the text following the LaTeX expression:
+#   - "(...)" defines the capture group.
+#   - "?P<text>" names the capture group "text".
+#   - "\w" is a shorthand character class to capture word characters (a-z, A-Z, 0-9, _).
+#   - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more characters.
 LATEX_WORKAROUND_REGEX = re.compile(
     r"(?<!\$)\$(?P<expression>[^$]+?)\$(?!\$)(?P<text>\w+)?"
 )
 
-"""
-MULTILINE_LATEX_REGEX is a compiled regular expression which matches any multi-line LaTeX expression (starting with
-\begin{...} and ending with \end{...}) which are not already enclosed in $$..$$.
-
-This is particularly nasty as the re module only supports fixed-length look-behinds. You're welcome...
-
-- "(?<!\$\$)" is a negative look-behind assertion to make sure that the start of the LaTeX expression is not already
-  preceded by a "$$":
-  - "(?<!...)" is the syntax for a negative lookbehind assertion in regex.
-  - "\$\$" matches the literal string "$$".
-- "(?<!\$\$\n)" is a negative look-behind assertion to make sure that the start of the LaTeX expression is not already
-  preceded by a "$$\n":
-  - "(?<!...)" is the syntax for a negative lookbehind assertion in regex.
-  - "\$\$" matches the literal string "$$".
-  - "\n" matches a newline character.
-- "\\begin\{" matches the literal string "\begin{", which is the start of the multi-line LaTeX expression.
-- "(\w+?)" is a non-greedy capture group for one or more word characters, to capture the content within the \begin{...}:
-  - "\w" is the shorthand character class that matches any word character (equivelant to [a-zA-Z0-9_]).
-  - "+?" is a lazy quantifier that matches one or more times, but as few times as possible.
-- "\}" matches the literal string "}", which closes the "\begin{...}".
-- "((?:.|\n)+?)" is a non-greedy capture group for one or more of any character, or newline:
-  - "(...)" is the syntax for a capture group.
-  - "(?:.|\n)" is a non-capturing group which matches any character (including newlines):
-    - "(?:...)" is the syntax for a non-capturing group.
-    - "." matches any character (except for a newline).
-    - "|" is the OR operator, which allows matching the pattern before or after it.
-    - "\n" matches newlines.
-  - "+?" is a lazy quantifier that matches one or more times, but as few times as possible.
-- "\\end\{" matches the literal string "\end{", which is the start of the last tag in the multi-line LaTeX expression.
-- "(\w+?)" is a non-greedy capture group for one or more word characters, to capture the content within the \end{...}:
-  - "\w" is the shorthand character class that matches any word character (equivelant to [a-zA-Z0-9_]).
-  - "+?" is a lazy quantifier that matches one or more times, but as few times as possible.
-- "\}" matches the literal string "}", which closes the "\end{...}".
-- "(?!\$\$)" is a negative lookahead assertion to make sure the end of the LaTeX expression is not already followed by
-  a "$$":
-  - "(?!...)" is the syntax for a negative lookahead assertion in regex.
-  - "\$\$" matches the literal string "$$".
-- "(?!\n\$\$)" is a negative lookahead assertion to make sure the end of the LaTeX expression is not already followed
-  by a "\n$$":
-  - "(?!...)" is the syntax for a negative lookahead assertion in regex.
-  - "\n" matches a newline character.
-  - "\$\$" matches the literal string "$$".
-"""
+# MULTILINE_LATEX_REGEX is a compiled regular expression which matches any multi-line LaTeX expression (starting with
+# \begin{...} and ending with \end{...}) which are not already enclosed in $$..$$.
+#
+# This is particularly nasty as the re module only supports fixed-length look-behinds. You're welcome...
+#
+# - "(?<!\$\$)" is a negative look-behind assertion to make sure that the start of the LaTeX expression is not already
+#   preceded by a "$$":
+#   - "(?<!...)" is the syntax for a negative lookbehind assertion in regex.
+#   - "\$\$" matches the literal string "$$".
+# - "(?<!\$\$\n)" is a negative look-behind assertion to make sure that the start of the LaTeX expression is not already
+#   preceded by a "$$\n":
+#   - "(?<!...)" is the syntax for a negative lookbehind assertion in regex.
+#   - "\$\$" matches the literal string "$$".
+#   - "\n" matches a newline character.
+# - "\\begin\{" matches the literal string "\begin{", which is the start of the multi-line LaTeX expression.
+# - "(\w+?)" is a non-greedy capture group for one or more word characters, to capture the content within the \begin{...}:
+#   - "\w" is the shorthand character class that matches any word character (equivelant to [a-zA-Z0-9_]).
+#   - "+?" is a lazy quantifier that matches one or more times, but as few times as possible.
+# - "\}" matches the literal string "}", which closes the "\begin{...}".
+# - "((?:.|\n)+?)" is a non-greedy capture group for one or more of any character, or newline:
+#   - "(...)" is the syntax for a capture group.
+#   - "(?:.|\n)" is a non-capturing group which matches any character (including newlines):
+#     - "(?:...)" is the syntax for a non-capturing group.
+#     - "." matches any character (except for a newline).
+#     - "|" is the OR operator, which allows matching the pattern before or after it.
+#     - "\n" matches newlines.
+#   - "+?" is a lazy quantifier that matches one or more times, but as few times as possible.
+# - "\\end\{" matches the literal string "\end{", which is the start of the last tag in the multi-line LaTeX expression.
+# - "(\w+?)" is a non-greedy capture group for one or more word characters, to capture the content within the \end{...}:
+#   - "\w" is the shorthand character class that matches any word character (equivelant to [a-zA-Z0-9_]).
+#   - "+?" is a lazy quantifier that matches one or more times, but as few times as possible.
+# - "\}" matches the literal string "}", which closes the "\end{...}".
+# - "(?!\$\$)" is a negative lookahead assertion to make sure the end of the LaTeX expression is not already followed by
+#   a "$$":
+#   - "(?!...)" is the syntax for a negative lookahead assertion in regex.
+#   - "\$\$" matches the literal string "$$".
+# - "(?!\n\$\$)" is a negative lookahead assertion to make sure the end of the LaTeX expression is not already followed
+#   by a "\n$$":
+#   - "(?!...)" is the syntax for a negative lookahead assertion in regex.
+#   - "\n" matches a newline character.
+#   - "\$\$" matches the literal string "$$".
 MULTILINE_LATEX_REGEX = re.compile(
     r"(?<!\$\$)(?<!\$\$\n)\\begin\{(\w+?)\}((?:.|\n)+?)\\end\{(\w+?)\}(?!\$\$)(?!\n\$\$)"
 )
 
-"""
-MULTILINE_LATEX_REPLACEMENT_PATTERN is the replacement pattern for use with the MULTILINE_LATEX_REGEX.
-
-This just wraps the original LaTeX expression inside $$...$$, so that it can render in MarkDown.
-
-- "$$\n" is used to wrap the original LaTeX expression in "$$" on the line above for neatness.
-- "\\begin{\1}" replaces the first group of the MULTILINE_LATEX_REGEX, which captured the content within the brackets of
-  the "\begin{...}".
-- "\2" replaces the contents that was captured in the MULTILINE_LATEX_REGEX between the "\begin{...}" and "\end{...}".
-- "\\end{\3}" replaces the last group of the MULTILINE_LATEX_REGEX, which captured the content within the brackets of
-  the "\end{...}".
-- "\n$$" is used to close the LaTeX expression with a "$$" on the line below for neatness.
-"""
+# MULTILINE_LATEX_REPLACEMENT_PATTERN is the replacement pattern for use with the MULTILINE_LATEX_REGEX.
+#
+# This just wraps the original LaTeX expression inside $$...$$, so that it can render in MarkDown.
+#
+# - "$$\n" is used to wrap the original LaTeX expression in "$$" on the line above for neatness.
+# - "\\begin{\1}" replaces the first group of the MULTILINE_LATEX_REGEX, which captured the content within the brackets of
+#   the "\begin{...}".
+# - "\2" replaces the contents that was captured in the MULTILINE_LATEX_REGEX between the "\begin{...}" and "\end{...}".
+# - "\\end{\3}" replaces the last group of the MULTILINE_LATEX_REGEX, which captured the content within the brackets of
+#   the "\end{...}".
+# - "\n$$" is used to close the LaTeX expression with a "$$" on the line below for neatness.
 MULTILINE_LATEX_REPLACEMENT_PATTERN = r"$$\n\\begin{\1}\2\\end{\3}\n$$"
 
 
