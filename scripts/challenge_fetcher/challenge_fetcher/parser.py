@@ -230,10 +230,9 @@ def parse_contents(
     # We are not interested in anything else on the page, so grab that.
     page_content = soup.find("div", id="content")
 
-    # If there is no page content, return None.
+    # If there is no page content, raise a ValueError as something has gone terribly wrong...
     if page_content is None:
-        print("Page content not found.")
-        return None
+        raise ValueError(f"Page content <div> was not found.")
 
     # The title is contained within the "content" div, and is contained within h2.
     title = page_content.find("h2").text
@@ -242,13 +241,10 @@ def parse_contents(
     # parse into markdown.
     description = page_content.find("div", class_="problem_content")
 
-    # Convert tooltips to MarkDown syntax.
-    convert_tooltips_to_markdown(description)
-
-    # Convert formatting syntax in the HTML to MarkDown syntax. This needs to be done before URLs are converted, to
-    # ensure that bold text within a link is maintained. If done after converting the URLs, the formatting tags will
-    # have already been removed.
-    convert_text_formatting_to_markdown(description)
+    # As above, raise a ValueError in the event that the description tag isn't found. This may indicate that the page
+    # layout has changed?
+    if description is None:
+        raise ValueError(f"Problem description <div> was not found.")
 
     # Convert any URLs embedded in the description to be markdown URLs.
     remote_content = convert_urls_to_markdown(description)
