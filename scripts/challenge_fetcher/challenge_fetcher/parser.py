@@ -507,7 +507,7 @@ def get_next_sibling_element(
     # Loop through the list of siblings.
     for sibling in siblings:
         # TODO: Can this strip all whitespace, not just newlines?
-        if sibling.text.strip("\n") is not None:
+        if sibling.text.strip("\n"):
             # If the sibling is not empty after removing newlines, return it.
             return sibling
 
@@ -607,7 +607,7 @@ def convert_span_tag_to_markdown(span: bs4.Tag, contents_string: str) -> str:
         str: The string representation of the span tag and its contents.
     """
 
-    if span.name is not "span":
+    if span.name != "span":
         # If the provided tag is not a <span> tag, it cannot be processed here so raise an error.
         raise ValueError(f"Span tag was expected but got a {span.name} tag.")
 
