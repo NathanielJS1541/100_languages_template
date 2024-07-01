@@ -599,6 +599,7 @@ def latex_regex_repl(match: re.Match[str]) -> str:
 
 
 def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
+def sanitise_tag_text(description: bs4.Tag, github_workarounds: bool) -> str:
     """sanitise_tag_text Sanitise the content of a bs4.Tag, and return it as a string.
 
     The text content of a bs4.Tag is "sanitised" to ensure that it is compatable with MarkDown. This includes an
@@ -661,7 +662,7 @@ def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
     description_text = re.sub(MULTILINE_LATEX_REGEX, MULTILINE_LATEX_REPLACEMENT_PATTERN, description_text)
 
     # If requested, do the GitHub-specific workarounds.
-    if github_workaround:
+    if github_workarounds:
         # Workaround for GitHub not supporting \operatorname anymore (see https://github.com/github/markup/issues/1688).
         if "\\operatorname" in description_text:
             # RegEx pattern to replace the occurrances of \operatorname in the description:

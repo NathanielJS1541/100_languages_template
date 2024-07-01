@@ -131,7 +131,7 @@ class TestKnownChallenges:
             # Ensure the response was returned successfully.
             assert response.ok is True
 
-            # Parse the contents into a challenge object. Assume the GitHub workaround is being used.
+            # Parse the contents into a challenge object. Assume the GitHub workarounds are being used.
             challenge = challenge_fetcher.parser.parse_contents(key, response, True)
 
             # Ensure the challenge was generated successfully.

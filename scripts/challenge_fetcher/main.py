@@ -25,7 +25,7 @@ if challenge_fetcher.arguments.validate_arguments(args):
 
         # Parse the HTML into a "challenge", containing an URL, project number, title, and description.
         challenge = challenge_fetcher.parser.parse_contents(
-            challenge_number, contents, args.github_workaround
+            challenge_number, contents, args.github_workarounds
         )
 
         # Export the challenge to a README.md file, and get a status code back.
