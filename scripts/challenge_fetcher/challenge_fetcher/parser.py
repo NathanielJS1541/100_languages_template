@@ -134,7 +134,9 @@ followed by text:
   - "\w" is a shorthand character class to capture word characters (a-z, A-Z, 0-9, _).
   - "+" is a greedy quantifier that matches one or more times, and allows the previous character class to capture one or more characters.
 """
-LATEX_WORKAROUND_REGEX = re.compile(r"(?<!\$)\$(?P<expression>[^$]+?)\$(?!\$)(?P<text>\w+)?")
+LATEX_WORKAROUND_REGEX = re.compile(
+    r"(?<!\$)\$(?P<expression>[^$]+?)\$(?!\$)(?P<text>\w+)?"
+)
 
 """
 MULTILINE_LATEX_REGEX is a compiled regular expression which matches any multi-line LaTeX expression (starting with
@@ -179,7 +181,9 @@ This is particularly nasty as the re module only supports fixed-length look-behi
   - "\n" matches a newline character.
   - "\$\$" matches the literal string "$$".
 """
-MULTILINE_LATEX_REGEX = re.compile(r"(?<!\$\$)(?<!\$\$\n)\\begin\{(\w+?)\}((?:.|\n)+?)\\end\{(\w+?)\}(?!\$\$)(?!\n\$\$)")
+MULTILINE_LATEX_REGEX = re.compile(
+    r"(?<!\$\$)(?<!\$\$\n)\\begin\{(\w+?)\}((?:.|\n)+?)\\end\{(\w+?)\}(?!\$\$)(?!\n\$\$)"
+)
 
 """
 MULTILINE_LATEX_REPLACEMENT_PATTERN is the replacement pattern for use with the MULTILINE_LATEX_REGEX.
@@ -195,6 +199,7 @@ This just wraps the original LaTeX expression inside $$...$$, so that it can ren
 - "\n$$" is used to close the LaTeX expression with a "$$" on the line below for neatness.
 """
 MULTILINE_LATEX_REPLACEMENT_PATTERN = r"$$\n\\begin{\1}\2\\end{\3}\n$$"
+
 
 def parse_contents(
     challenge_number: int,
@@ -474,7 +479,9 @@ def latex_regex_repl(match: re.Match[str]) -> str:
     return expression
 
 
-def get_next_sibling_element(element: bs4.PageElement, reverse: bool) -> bs4.PageElement | None:
+def get_next_sibling_element(
+    element: bs4.PageElement, reverse: bool
+) -> bs4.PageElement | None:
     """get_next_sibling_element Get the next sibling element of the specified element.
 
     If the specified element has a sibling in the specified direction, it is returned. Otherwise None is returned.
@@ -634,13 +641,15 @@ def convert_span_tag_to_markdown(span: bs4.Tag, contents_string: str) -> str:
     elif "tooltiptext" in span_classes:
         # Format the tooltiptext as a MarkDown link, which uses "##" to ensure the page won't scroll when the tooltip
         # is clicked (whereas a single "#" would navigate to the top of the page).
-        span_string = f"(## \"{contents_string}\")"
+        span_string = f'(## "{contents_string}")'
     else:
         # Create a string list of all the classes.
         classes_list = ", ".join(span_classes)
 
         # If the tag class is not recognised, raise an error so it can be identified and implemented.
-        raise NotImplementedError(f"Unknown usage of a <span> tag. Tag classes: {classes_list}.")
+        raise NotImplementedError(
+            f"Unknown usage of a <span> tag. Tag classes: {classes_list}."
+        )
 
     # Return the MarkDown string representing the <span> tag.
     return span_string
@@ -687,7 +696,7 @@ def get_string_for_tag_type(tag: bs4.Tag, contents_strings: list[str]) -> str:
         # should be added.
         if tag_classes and "problem_content" in tag_classes:
             # This is the main tag that contains problem content.
-            # No surrounding newlines are needed 
+            # No surrounding newlines are needed
             tag_string = contents_string
         else:
             # For normal <div> tags, ensure the correct number of newlines are placed bewteen adjacent elements.
@@ -720,7 +729,7 @@ def get_string_for_tag_type(tag: bs4.Tag, contents_strings: list[str]) -> str:
         raise NotImplementedError(
             f"{tag.name} tags with nested contents have not been implemented."
         )
-    
+
     # Workaround to get tooltips to render properly.
     # TODO: I hate this, but it works for now.
     if tag_classes and "tooltip" in tag_classes:
@@ -835,7 +844,9 @@ def sanitise_tag_text(description: bs4.Tag, github_workarounds: bool) -> str:
 
     # Ensure that multi-line LaTeX expressions (between \begin{...} and \end{...}) are being enclosed in $$..$$ tags.
     # This allows them to correctly render when exported to MarkDown.
-    description_text = re.sub(MULTILINE_LATEX_REGEX, MULTILINE_LATEX_REPLACEMENT_PATTERN, description_text)
+    description_text = re.sub(
+        MULTILINE_LATEX_REGEX, MULTILINE_LATEX_REPLACEMENT_PATTERN, description_text
+    )
 
     # If requested, do the GitHub-specific workarounds.
     if github_workarounds:
@@ -866,10 +877,12 @@ def sanitise_tag_text(description: bs4.Tag, github_workarounds: bool) -> str:
             # Use the RegEx pattern and replacement strings to replace \operatorname{...} with \mathop{\text{...}} in
             # the description text.
             description_text = re.sub(pattern, replacement, description_text)
-        
+
         # Workaround for GitHub not properly rendering LaTeX immediately followed by text.
         # See #2 (https://github.com/NathanielJS1541/100_languages_template/issues/2).
         # This just adds any text immediately next to an inline LaTeX expression into the LaTeX.
-        description_text = re.sub(LATEX_WORKAROUND_REGEX, latex_regex_repl, description_text)
+        description_text = re.sub(
+            LATEX_WORKAROUND_REGEX, latex_regex_repl, description_text
+        )
 
     return description_text
