@@ -291,126 +291,6 @@ def sanitise_file_name(file_name: str) -> str:
     return filename_match.group("filename")
 
 
-def convert_tooltips_to_markdown(content: bs4.Tag) -> None:
-    """convert_tooltips_to_markdown Replace HTML tooltips with a MarkDown equivelant.
-
-    Args:
-        content (bs4.Tag): The bs4 content to replace tooltip tags in.
-
-    Raises:
-        NotImplementedError: A tag type that has not been implemented was encountered.
-    """
-
-    # Loop through every "span" tag that has the class "tooltiptext".
-    for tag in content.find_all("span", class_="tooltiptext"):
-        # Get the parent tag, which will reveal the desired formatting of the tooltip.
-        parent = tag.parent
-
-        # Get the text that is displayed in the tooltip. This appears in the pop-up.
-        tooltip_text = tag.text
-
-        # Remove the tag from the content, as it is no longer needed.
-        tag.decompose()
-
-        # Add MarkDown syntax for the formatting style if it is present on the parent tag.
-        target_text = get_markdown_from_formatted_tag(parent)
-
-        # If there is no return from get_markdown_from_formatted_tag(parent), then there was no style on the parent
-        # tag. In this case, just use the text with no formatting.
-        if target_text is None:
-            target_text = parent.text
-
-        # Replace the parent tag with the MarkDown representation of a "tooltip".
-        # "##" is used so that the link doesn't navigate to the top of the page.
-        parent.replace_with(f'[{target_text}](## "{tooltip_text}")')
-
-
-def get_markdown_from_formatted_tag(tag: bs4.Tag) -> str | None:
-    """get_markdown_from_formatted_tag Convert the formatted text in a bs4.Tag to MarkDown syntax.
-
-    Currently supported formatting styles:
-    - Italic <i> and <em> tags.
-    - Bold <b> and <strong> tags.
-    - Span <span> tags used to colour text. (Must have a class matching a colour in BASIC_HTML_COLOURS).
-
-    Note that if the tag does not contain any formatting, None will be returned.
-
-    Args:
-        tag (bs4.Tag): The bs4 tag to return the MarkDown equivalent text for.
-
-    Raises:
-        NotImplementedError: A tag type was found that has not been implemented.
-
-    Returns:
-        str | None: A string representing the formatted tag text. None if no formatting was found.
-    """
-
-    # Default to returning None.
-    markdown_string = None
-
-    if tag.name == "span":
-        # <span> tags are used to colour text. The easiest way (that I know of...) to colour output text in
-        # MarkDown is to use LaTeX.
-
-        # IF a span is used to represent a colour, the class stores the colour name.
-        # We can assume there is only one class, as the colour name will be checked for validity.
-        colour = tag.get("class")[0]
-
-        # Check that the colour is one of the standard HTML colours.
-        # Note that if the colour is not a standard colour, the text will not be replaced. The span could represent
-        # something else (such as a tooltip) which will be replaced elsewhere.
-        if colour in BASIC_HTML_COLOURS:
-            # Generate some LaTeX that will set the text within the tag to the specified colour.
-            markdown_string = f"\\color{{{colour}}}{{{tag.text}}}"
-
-            # Additionally, MarkDown-style bold and italic syntax aren't compatable with this LaTeX. If there is a <b>,
-            # <strong>, <i>, or <em> tag inside the coloured span, we can add a bit of extra LaTeX to reflect this.
-            if tag.findChild("b") or tag.findChild("strong"):
-                # Use \\bf in front of the LaTeX to make it bold and coloured.
-                markdown_string = "\\bf" + markdown_string
-            if tag.findChild("i") or tag.findChild("em"):
-                # Use \\it in front of the LaTeX to make it italic and coloured.
-                markdown_string = "\\it" + markdown_string
-
-            # Finally, replace the tag with the complete LaTeX expression so that it can be rendered inline ($..$).
-            markdown_string = f"${{{markdown_string}}}$"
-    elif tag.name == "i" or tag.name == "em":
-        # <i> and <em> tags should be replaced with MarkDown italic syntax.
-        markdown_string = f"*{tag.text}*"
-    elif tag.name == "b" or tag.name == "strong":
-        # <b> and <strong> tags should be replaced with MarkDown bold syntax.
-        markdown_string = f"**{tag.text}**"
-    else:
-        # If a tag type has not been implemented, throw an error.
-        raise NotImplementedError(f'"{tag.name}" tags have not been implemented.')
-
-    return markdown_string
-
-
-def convert_text_formatting_to_markdown(content: bs4.Tag) -> None:
-    """convert_text_formatting_to_markdown Replace formatting tags with MarkDown syntax.
-
-    This uses the get_markdown_from_formatted_tag() method. For supported tags, check the docstring for that function.
-
-    Args:
-        content (bs4.Tag): The bs4 content to replace formatting tags in.
-
-    Raises:
-        NotImplementedError: A tag type was found that hasn't been implemented.
-    """
-
-    # Loop through all formatting tags in the content.
-    # Spans must be done first as they MAY need to replace some of the <b> and <i> tags if they are present!
-    for tag in content.find_all(["span", "i", "b"]):
-        # Get the formatted MarkDown string for the current tag.
-        equivalent_string = get_markdown_from_formatted_tag(tag)
-
-        # Only replace the tag if a string was returned. None will be returned if no formatting was found in the tag,
-        # in which the tag should be left for the get_string() method to handle later on.
-        if equivalent_string is not None:
-            tag.replace_with(equivalent_string)
-
-
 def convert_urls_to_markdown(content: bs4.Tag) -> dict[str, str] | None:
     """convert_urls_to_markdown Convert all URLs in the bs4.Tag to MarkDown links.
 
@@ -594,7 +474,331 @@ def latex_regex_repl(match: re.Match[str]) -> str:
     return expression
 
 
-def sanitise_tag_text(description: bs4.Tag, github_workaround: bool) -> str:
+def get_next_sibling_element(element: bs4.PageElement, reverse: bool) -> bs4.PageElement | None:
+    """get_next_sibling_element Get the next sibling element of the specified element.
+
+    If the specified element has a sibling in the specified direction, it is returned. Otherwise None is returned.
+
+    Siblings are ignored if they consist of only newlines.
+
+    Args:
+        element (bs4.PageElement): The element to look for siblings of.
+        reverse (bool): False to look for the NEXT sibling element. True to look for the PREVIOUS sibling element.
+
+    Returns:
+        bs4.PageElement | None: The next sibling element in the specified direction, or None.
+    """
+
+    # Get the siblings to iterate through based on the specified direction.
+    if reverse:
+        # In reverse mode, look through the previous siblings of the element.
+        siblings = element.previous_siblings
+    else:
+        # In normal mode, look through the next siblings of the element.
+        siblings = element.next_siblings
+
+    # Loop through the list of siblings.
+    for sibling in siblings:
+        # TODO: Can this strip all whitespace, not just newlines?
+        if sibling.text.strip("\n") is not None:
+            # If the sibling is not empty after removing newlines, return it.
+            return sibling
+
+
+def format_tag_as_markdown_paragraph(tag: bs4.Tag, markdown: str) -> str:
+    """format_tag_as_markdown_paragraph Add the correct spacing around the MarkDown string based on the tag type.
+
+    Different "paragraph" style tags should be handled differently. The formatting is handled here to ensure it is
+    consistent.
+
+    Currently this will handle the following tags:
+      - <p>
+      - <div>
+      - <blockquote>
+      - <br>
+
+    Args:
+        tag (bs4.Tag): The paragraph tag to format the MarkDown string based on.
+        markdown (str): The current MarkDown representation of the contents of the tag.
+
+    Returns:
+        str: A string with the correct paragraph spacing for the tag type when rendered in MarkDown.
+    """
+
+    # TODO: Maybe if this is given the text for the previous element, it can be simplified a lot?
+
+    # Get the next and previous sibling element to the current tag.
+    previous_sibling = get_next_sibling_element(tag, reverse=True)
+    next_sibling = get_next_sibling_element(tag, reverse=False)
+
+    # This list denotes the "paragraph" style tags, that should ensure there is spacing between this tag and
+    # surrounding tags.
+    paragraph_tags = ["p", "div", "blockquote"]
+
+    # The prefix and will store the newlines to place efore and after the "markdown" text.
+    prefix = ""
+    suffix = ""
+
+    # If the tag is a "paragraph" style tag, ensure there are two newlines between it and the next element.
+    if tag.name in paragraph_tags:
+        # TODO: Maybe this can be simplified if it just checks in one direction?
+        if isinstance(previous_sibling, bs4.Tag):
+            # If the previous element is a bs4.Tag, it may have added newlines before the current paragraph.
+            if previous_sibling.name in paragraph_tags:
+                # "Paragraph" style tags will have appended a single newline after them, so add a single newline before
+                # this "paragraph".
+                prefix = "\n"
+            elif previous_sibling.name == "ul":
+                # TODO: Can this just be an else?
+                # Lists will not have newlines added after them but require spacing, so add it here.
+                prefix = "\n\n"
+        elif isinstance(previous_sibling, bs4.NavigableString):
+            # A NavigableString will not have had newlines added after it, so add two as a prefix.
+            prefix = "\n\n"
+
+        if isinstance(next_sibling, bs4.Tag):
+            # If the next element is a bs4.Tag, it may add newlines after the current paragraph.
+            if next_sibling.name in paragraph_tags:
+                # As above, "paragraph" style strings will add a single newline before themselves, so add a single
+                # newline after the paragraph.
+                suffix = "\n"
+            elif next_sibling.name == "ul":
+                # TODO: Can this just be an else?
+                # Lists will not have newlines added before them but require spacing, so add it here.
+                suffix = "\n\n"
+        elif isinstance(next_sibling, bs4.NavigableString):
+            # A NavigableString will not have had newlines added before it, so add two as a suffix.
+            suffix = "\n\n"
+    elif tag.name == "br":
+        # If the tag is a <br> tag, it should only be able to effect the formatting of any sibling tags, but not tags
+        # outside of its parent tag. To ensure this, check whether the next sibling exists.
+        if next_sibling is not None:
+            # If there is a sibling tag after the <br>, add a newline. Otherwise the <br> is ignored.
+            markdown = "\n"
+
+    # Return the original MarkDown text with the newlines in the prefix and suffix applied.
+    return f"{prefix}{markdown}{suffix}"
+
+
+def convert_span_tag_to_markdown(span: bs4.Tag, contents_string: str) -> str:
+    """convert_span_tag_to_markdown convert_span_tag_to_markdown Generate the MarkDown-equivelant text for the given span tag.
+
+    Some of the formatting for <span> tags is a little long-winded, so is currently in its own method.
+
+    <span> tags are mostly being used to colour text. The easiest way (that I know of...) to colour output text in
+    MarkDown is to use LaTeX.
+
+    Args:
+        span (bs4.Tag): The span tag to get the formatted text for.
+        contents_string (str): The string representation of the contents of the tag.
+
+    Raises:
+        ValueError: If the provided tag is not a span tag, a ValueError is raised.
+        NotImplementedError: If the span class is not yet implemented, a NotImplementedError is raised.
+
+    Returns:
+        str: The string representation of the span tag and its contents.
+    """
+
+    if span.name is not "span":
+        # If the provided tag is not a <span> tag, it cannot be processed here so raise an error.
+        raise ValueError(f"Span tag was expected but got a {span.name} tag.")
+
+    # IF a span is used to represent a colour, the class stores the colour name.
+    # We can assume there is only one class, as the colour name will be checked for validity.
+
+    # Get the classes for the span tag, as it is used to select the behaviour.
+    span_classes = span.get("class")
+
+    # If the <span> tag is used to colour text, assume that the first class that is returned will be a colour tag.
+    # Check the first class against the standard HTML colours to see if this is the case.
+    if span_classes[0] in BASIC_HTML_COLOURS:
+        # Generate some LaTeX that will set the text within the tag to the specified colour.
+        latex_string = f"\\color{{{span_classes[0]}}}{{{span.text}}}"
+
+        # Additionally, MarkDown-style bold and italic syntax aren't compatable with this LaTeX. If there is a <b>,
+        # <strong>, <i>, or <em> tag inside the coloured span, we can add a bit of extra LaTeX to reflect this.
+        if span.findChild("b") or span.findChild("strong"):
+            # Use \\bf in front of the LaTeX to make it bold and coloured.
+            latex_string = "\\bf" + latex_string
+        if span.findChild("i") or span.findChild("em"):
+            # Use \\it in front of the LaTeX to make it italic and coloured.
+            latex_string = "\\it" + latex_string
+
+        # Finally, replace the tag with the complete LaTeX expression so that it can be rendered inline ($..$).
+        span_string = f"${{{latex_string}}}$"
+    # TODO: tooltip tags are currently processed in get_string_for_tag_type(). Maybe tooltip and tooltiptext tags
+    # should both be processed in the same place?
+    # elif "tooltip" in span_class:
+    #     span_string = f"[{contents_string}]"
+    elif "tooltiptext" in span_classes:
+        # Format the tooltiptext as a MarkDown link, which uses "##" to ensure the page won't scroll when the tooltip
+        # is clicked (whereas a single "#" would navigate to the top of the page).
+        span_string = f"(## \"{contents_string}\")"
+    else:
+        # Create a string list of all the classes.
+        classes_list = ", ".join(span_classes)
+
+        # If the tag class is not recognised, raise an error so it can be identified and implemented.
+        raise NotImplementedError(f"Unknown usage of a <span> tag. Tag classes: {classes_list}.")
+
+    # Return the MarkDown string representing the <span> tag.
+    return span_string
+
+
+def get_string_for_tag_type(tag: bs4.Tag, contents_strings: list[str]) -> str:
+    """get_string_for_tag_type Get a string that represents the tag and its contents, formatted to be MarkDown-compatible.
+
+    Parses the contents_strings for the specified tag and formats them so they are MarkDown-compatible, and render
+    similarly to the original content when rendered as MarkDown.
+
+    Args:
+        tag (bs4.Tag): The tag to base the formatting on. All contents will be placed within the relevant formatting.
+        contents_strings (list[str]): A list of strings representing the elements within the tag.
+
+    Raises:
+        NotImplementedError: The HTML tag has not been implemented.
+
+    Returns:
+        str: A MarkDown-formatted string which represents the tag and its contents.
+    """
+
+    # Get the classes ascosiated with the tag. This is used in multiple places so just get it once.
+    tag_classes = tag.get("class")
+
+    # Workaround to get tooltips to render properly.
+    # TODO: I hate this, but it works for now.
+    if tag_classes and "tooltip" in tag_classes:
+        # For tooltip tags, get only the first element to display as the tooltip. The rest will (probably...) be the
+        # tooltip text to display on hover.
+        contents_string = contents_strings[0]
+    else:
+        # Some tags just need the complete contents string, so generate that once here.
+        contents_string = "".join(contents_strings)
+
+    # Format the contents_strings or contents_string based on tag type.
+    if tag.name == "p" or tag.name == "br" or tag.name == "blockquote":
+        # For paragraph / break / blockquote tags, ensure there are the correct number of newlines between adjacent
+        # elements.
+        tag_string = format_tag_as_markdown_paragraph(tag, contents_string)
+    elif tag.name == "div":
+        # <div> tags should be handled the same as <p> and <blockquote> tags, except in the case
+        # where it is the topmost tag containing all the problem content. In this case no newlines
+        # should be added.
+        if tag_classes and "problem_content" in tag_classes:
+            # This is the main tag that contains problem content.
+            # No surrounding newlines are needed 
+            tag_string = contents_string
+        else:
+            # For normal <div> tags, ensure the correct number of newlines are placed bewteen adjacent elements.
+            tag_string = format_tag_as_markdown_paragraph(tag, contents_string)
+    elif tag.name == "i" or tag.name == "em":
+        # <i> and <em> tags should be replaced with MarkDown italic syntax.
+        tag_string = f"*{contents_string}*"
+    elif tag.name == "b" or tag.name == "strong":
+        # <b> and <strong> tags should be replaced with MarkDown bold syntax.
+        tag_string = f"**{contents_string}**"
+    elif tag.name == "sup":
+        # <sup> tags preceded by LaTeX can be joined into the LaTeX equation.
+        # TODO: This is a horrible bodge.
+        # TODO: Everything will go wrong if LaTeX isn't there!
+        tag_string = f"^{{{contents_string}}}$"
+    elif tag.name == "span":
+        # Span tags can be used for either coloured and formatted text, or tooltip text.
+        # The handling is a bit long-winded so is in its own function... For now...
+        tag_string = convert_span_tag_to_markdown(tag, contents_string)
+    elif tag.name == "ul":
+        # Remove newlines surrounding unordered lists so the surrounding formatting isn't affected.
+        # This ensures the trailing "\n" from the last <li> element is removed.
+        tag_string = contents_string.strip("\n")
+    elif tag.name == "li":
+        # List elements should be separated by a single newline.
+        # This will leave a trailing "\n" on the last <li> element in a <ul>.
+        tag_string = f"{contents_string}\n"
+    else:
+        # If a HTML tag type has not been implemented, raise an error so it can be identified and fixed.
+        raise NotImplementedError(
+            f"{tag.name} tags with nested contents have not been implemented."
+        )
+    
+    # Workaround to get tooltips to render properly.
+    # TODO: I hate this, but it works for now.
+    if tag_classes and "tooltip" in tag_classes:
+        # Join all but the first contents string to form the tooltip text.
+        tooltip_text = "".join(contents_strings[1::])
+        # Format the tooltip text into MarkDown syntax.
+        tag_string = f"[{tag_string}]{tooltip_text}"
+
+    # Return the string that represents the tag and its contents.
+    return tag_string
+
+
+def get_element_as_markdown(element: bs4.PageElement) -> str:
+    """get_element_as_markdown Get the specified element and all of its contents as MarkDown-compatible text.
+
+    Recursively traverses the parse tree (ooooh recursive function.... scary!) in order to parse each element that is
+    a child of the specified element, and reconstruct the parse tree into MarkDown-compatible text. This includes
+    replacing HTML syntax with the equivelant in MarkDown where applicable.
+
+    Args:
+        element (bs4.PageElement): The page element to construct the MarkDown text from.
+
+    Raises:
+        NotImplementedError: Raised when a HTML element type has not been implemented.
+
+    Returns:
+        str: The MarkDown-compatible string representing the element and its children.
+    """
+
+    # The action performed on a specified element depends on its instance type.
+    if isinstance(element, bs4.NavigableString):
+        # If the tag is a NavigableString, it holds no useful formatting information. Simply remove all newlines from
+        # the start and end of the text, as the MarkDown formatting will be derived from the tag types of subsequent
+        # tags.
+        # NavigableStrings can't have any children, so can be parsed directly as text.
+        tag_string = element.text.strip("\n")
+
+        # Workaround for enclosing <sup> tags inside adjacent LaTeX.
+        # TODO: This is horrible.... Move this into get_tag_and_contents_as_markdown_text()? Maybe
+        # that method needs the previous element to be passed in aswell?
+        if tag_string.endswith("$"):
+            # Get the element next to the current element.
+            next_element = get_next_sibling_element(element, False)
+
+            # If the tag is a <sup> tag and the current NavigableString ends with a "$", remove the
+            # closing "$" as it will be added when the <sup> tag is parsed.
+            # TODO: I really, really hate this...
+            if isinstance(next_element, bs4.Tag) and next_element.name == "sup":
+                tag_string = tag_string[:-1]
+    elif isinstance(element, bs4.Tag):
+        # If the element is a tag, it can have children which need to be individually parsed to retain their formatting
+        # style.
+
+        # Create a blank list to store the formatted text from the child elements.
+        contents_strings = []
+
+        # Get an Iterable for the children of the current tag.
+        child_elements = element.children
+
+        # If there are PageElements contained within the current element, they must be processed individually.
+        if child_elements is not None:
+            # Loop through each of the child elements of the current element.
+            for child in child_elements:
+                # Append the formatted output from each of the child elements to the list.
+                contents_strings.append(get_element_as_markdown(child))
+
+        # Format the string of the child elements, based on the tag type of the current element.
+        tag_string = get_string_for_tag_type(element, contents_strings)
+    else:
+        # If the element is an unknown type, raise an error so it can be identified implemented.
+        raise NotImplementedError(
+            f"Handling for bs4.{type(element).__name__}s has not been implemented."
+        )
+
+    # Return the string that represents the element and its contents.
+    return tag_string
+
+
 def sanitise_tag_text(description: bs4.Tag, github_workarounds: bool) -> str:
     """sanitise_tag_text Sanitise the content of a bs4.Tag, and return it as a string.
 
@@ -611,30 +815,10 @@ def sanitise_tag_text(description: bs4.Tag, github_workarounds: bool) -> str:
         str: A string that is MarkDown-compatible, which contains the description for the Project Euler challenge.
     """
 
-    # Copy the list of child elements so elements can be removed from description whilst enumerating over them.
-    child_elements = description.contents.copy()
-
-    # Loop over each child element to remove them or replace them with formatted text.
-    for child in child_elements:
-        if child.text.isspace():
-            # If the child element is just whitespace, remove it since it will mess up the formatting when the
-            # description gets converted to text. In order to mimic the HTML layout in MarkDown, I am relying entirely
-            # on tags like <p>, <div> etc. to know where to place newlines.
-            description.contents.remove(child)
-        else:
-            # If there is some text content to the child element, replace it with a text representation of it.
-            # strip=False).strip("\n") may seem odd at first, but strip=True would also strip out spaces. I need to
-            # ensure that only newlines are removed, so an external call to .strip("\n") is used.
-            # The text representation of the child is placed between newlines, so that the text from each element will
-            # end up at most two newlines from the next (a paragraph space in MarkDown).
-            child_text = "\n" + child.get_text(separator="", strip=False).strip("\n") + "\n"
-
-            # Replace the child with its text representation.
-            child.replace_with(child_text)
-
-    # Get the text representation of the description. strip=False is used here to avoid stripping out all of the
-    # newlines we just deliberately placed between each element.
-    description_text = description.get_text(separator="", strip=False)
+    # Get the text representation of the description tag. This tag is a <div> with the class "problem_content".
+    # The get_tag_and_contents_as_markdown_text() method will recursively parse all tags that are descendents of the
+    # "description" tag into MarkDown-compatible text, and return the resulting string.
+    description_text = get_element_as_markdown(description)
 
     # Strip leading and trailing whitespaces to ensure consistent spacing from the title and footnote when it is added
     # to the MarkDown file.
@@ -650,7 +834,7 @@ def sanitise_tag_text(description: bs4.Tag, github_workarounds: bool) -> str:
     description_text = description_text.replace("\\{", "\\\\{").replace("\\}", "\\\\}")
 
     # Ensure that multi-line LaTeX expressions (between \begin{...} and \end{...}) are being enclosed in $$..$$ tags.
-    # This allows them to correctly render.
+    # This allows them to correctly render when exported to MarkDown.
     description_text = re.sub(MULTILINE_LATEX_REGEX, MULTILINE_LATEX_REPLACEMENT_PATTERN, description_text)
 
     # If requested, do the GitHub-specific workarounds.
