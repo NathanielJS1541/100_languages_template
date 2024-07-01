@@ -644,10 +644,6 @@ def sanitise_tag_text(description: bs4.Tag, github_workarounds: bool) -> str:
     # to the MarkDown file.
     description_text = description_text.strip()
 
-    # Replace any non-breaking spaces from the text with normal spaces. In MarkDown, the non-breaking spaces render
-    # weirdly so should be removed.
-    description_text = description_text.replace("\xa0", " ")
-
     # Some LaTeX expressions do not render correctly as the curly braces \{ and \} do not end up with a backslash. It
     # seems like the backslash is interpreted as an escape character. In order to escape the backslash it must be
     # preceeded with another backslash. To ensure this only alters LaTeX syntax, search for specifically the
